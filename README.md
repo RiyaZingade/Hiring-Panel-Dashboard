@@ -29,7 +29,7 @@ You need all three of these, or the panel won't run:
 ## Set it up (first time only)
 
 ```
-git clone https://github.com/RiyaZingade/Hiring-Panel.git
+git clone https://github.com/RiyaZingade/Hiring-Panel-Dashboard.git
 ```
 
 There's nothing to install: the app has no dependencies.
@@ -38,7 +38,7 @@ There's nothing to install: the app has no dependencies.
 
 1. In Terminal, start the local server and leave the window open:
    ```
-   cd Hiring-Panel && npm run local
+   cd Hiring-Panel-Dashboard && npm run local
    ```
 2. Open the dashboard. Either:
    - **https://hiring-panel-studio.vercel.app**, which connects to the server on your computer:

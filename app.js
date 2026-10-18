@@ -1,7 +1,7 @@
 // Hiring Panel — single-page app. State lives in this browser's
 // localStorage; the /api routes run each reviewer through Claude.
 
-const REPO_URL = 'https://github.com/RiyaZingade/Hiring-Panel';
+const REPO_URL = 'https://github.com/RiyaZingade/Hiring-Panel-Dashboard';
 
 // `about` and `checks` describe each reviewer on the Panel agents page; they
 // summarize the briefs in api/review.js, so keep the two in step.
@@ -1145,7 +1145,7 @@ function viewSetup() {
     </section>
     <section class="card c3"><div class="card-head"><span class="step">02</span><h2>Start the server</h2><span class="muted" style="font-size:12px">Each time you use it</span></div>
       <p class="muted" style="margin:0">Open Terminal, run this, and leave the window open while you work:</p>
-      ${cmd('cd Hiring-Panel && npm run local')}
+      ${cmd('cd Hiring-Panel-Dashboard && npm run local')}
     </section>
     <section class="card c4"><div class="card-head"><span class="step">03</span><h2>Connect this page</h2></div>
       <div class="browsers">
