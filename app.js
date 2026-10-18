@@ -794,10 +794,10 @@ function viewEditor(r) {
         <div class="paper" id="paper">${previewHtml(app.draft)}</div>
       </section>
       ${collapsed ? `<aside class="pane-edits collapsed" aria-label="Suggested edits">
-        <button type="button" class="vtoggle" data-action="toggle-edits" aria-expanded="false">${icon('back', 16)}<span>Suggested edits · ${openCount} open</span></button>
+        <button type="button" class="vtoggle" data-action="toggle-edits" aria-expanded="false">${icon('back', 16)}<span>Show suggested edits · ${openCount} open</span></button>
       </aside>` : `<aside class="pane-edits" aria-label="Suggested edits">
         <div class="pane-head"><span style="color:var(--text)">Suggested edits</span><span class="mono" style="margin-left:auto">${openCount} open</span>
-          <button type="button" class="iconbtn" data-action="toggle-edits" aria-expanded="true" aria-label="Hide suggested edits" title="Hide suggested edits">${icon('M9 18l6-6-6-6', 16)}</button></div>
+          <button type="button" class="btn sm" data-action="toggle-edits" aria-expanded="true" title="Hide this panel to make the preview bigger">Hide${icon('M9 18l6-6-6-6', 14)}</button></div>
         <div class="edits">
           ${edits.length ? edits.map((e) => `<div class="edit ${e.state === 'Applied' ? 'done' : ''} ${e.state === 'Dismissed' ? 'dismissed' : ''}">
               <span style="display:flex;align-items:center;gap:8px;font-size:12px" class="muted"><span class="ecode">${e.i + 1}</span>${esc(e.where)}<span style="margin-left:auto;color:${e.state === 'Applied' ? 'var(--good)' : e.state === 'Open' ? 'var(--warn)' : 'var(--faint)'}">${e.state}</span></span>
