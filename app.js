@@ -82,6 +82,27 @@ function load() {
   return { apps: [], library: [] };
 }
 let db = load();
+db.prefs ||= { theme: 'dark', accent: 'blue', defaultResumeId: null };
+db.profile ||= { shareWithAgents: true };
+
+// ---------- theme ----------
+// Accent presets: [dark-mode shade, light-mode shade].
+const ACCENTS = {
+  blue: ['#8AB4FF', '#2F6BED'], violet: ['#B9A3FF', '#7C5CE0'], teal: ['#5FD4D0', '#0E8F8A'],
+  green: ['#9BE3C4', '#15936A'], pink: ['#F58BA8', '#D23C72'], orange: ['#F0A35E', '#C9650F']
+};
+const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+function applyTheme() {
+  const theme = db.prefs.theme === 'system' ? (systemDark.matches ? 'dark' : 'light') : db.prefs.theme;
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  const [dark, light] = ACCENTS[db.prefs.accent] || ACCENTS.blue;
+  root.style.setProperty('--accent', theme === 'light' ? light : dark);
+  root.style.setProperty('--c-blue', theme === 'light' ? light : dark);
+}
+applyTheme();
+systemDark.addEventListener?.('change', () => { if (db.prefs.theme === 'system') applyTheme(); });
+const defaultResume = () => db.library.find((r) => r.id === db.prefs.defaultResumeId) || db.library[db.library.length - 1];
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { toast('Could not save to this browser (storage full or blocked).'); }
 }
@@ -125,7 +146,7 @@ function verdictLabel(agentId, verdict) { return agentId !== 'ats' && verdict ==
 function tone(agentId, verdict) {
   const k = verdictKey(agentId, verdict);
   if (k === 'HIRE' || k === 'PASS_ats') return { c: 'var(--good)', bg: 'var(--good-bg)', icon: k === 'HIRE' ? 'hire' : 'pass' };
-  if (k === 'INTERVIEW') return { c: 'var(--accent)', bg: '#17202E', icon: 'interview' };
+  if (k === 'INTERVIEW') return { c: 'var(--accent)', bg: 'color-mix(in srgb, var(--accent) 15%, transparent)', icon: 'interview' };
   if (k === 'MAYBE') return { c: 'var(--warn)', bg: 'var(--warn-bg)', icon: 'maybe' };
   return { c: 'var(--bad)', bg: 'var(--bad-bg)', icon: 'no' };
 }
@@ -386,6 +407,8 @@ function route() {
   if (parts[0] === 'agents') return { name: 'agents' };
   if (parts[0] === 'setup') return { name: 'setup' };
   if (parts[0] === 'credits') return { name: 'credits' };
+  if (parts[0] === 'settings') return { name: 'settings' };
+  if (parts[0] === 'profile') return { name: 'profile' };
   if (parts[0] === 'app' && parts[1]) {
     if (parts[2] === 'edit') return { name: 'editor', id: parts[1] };
     if (parts[2] === 'suggestions') return { name: 'suggest', id: parts[1] };
@@ -406,7 +429,7 @@ const ui = {
   editsCollapsed: (() => { try { return localStorage.getItem('hps.editsCollapsed') === '1'; } catch (e) { return false; } })()
 };
 function blankForm() {
-  const base = db.library[db.library.length - 1];
+  const base = defaultResume();
   return {
     company: '', role: '', posting: '',
     mode: base ? 'saved' : 'latex',
@@ -423,11 +446,15 @@ function shell(active, content) {
     <header class="topbar">
       <a class="brand" href="#/">${LOGO}<span>Hiring Panel</span></a>
       <span class="topbar-right">${connBadge()}
-        <a class="btn sm ${active === 'setup' ? 'on' : ''}" href="#/setup">${icon('gear', 14)}Setup${conn.state === 'offline' ? '<span class="navdot" title="Not connected"></span>' : ''}</a></span>
+        <a class="btn sm ${active === 'setup' ? 'on' : ''}" href="#/setup">${icon('code', 14)}Setup${conn.state === 'offline' ? '<span class="navdot" title="Not connected"></span>' : ''}</a>
+        <a class="iconlink ${active === 'settings' ? 'on' : ''}" href="#/settings" aria-label="Settings" title="Settings">${icon('gear', 18)}</a>
+        <a class="avatar ${active === 'profile' ? 'on' : ''}" href="#/profile" aria-label="Profile" title="Profile">${esc(initials(db.profile.name))}</a></span>
     </header>
     <main class="main">${content}</main>
   </div>`;
 }
+
+const initials = (name) => (String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')) || '?';
 
 // ---------- dock (bottom navigation) ----------
 const DOCK = [
@@ -486,7 +513,7 @@ function viewApps() {
     const s = v ? score(v) : null;
     const bars = AGENTS.map((g) => {
       const r = v?.reviews?.[g.id];
-      let c = '#2A2D35';
+      let c = 'var(--line-3)';
       if (r?.status === 'run') c = 'var(--warn)';
       else if (r?.status === 'error') c = 'var(--bad)';
       else if (r?.status === 'done') c = ['NO', 'REJECT'].includes(r.data.verdict) || (g.id !== 'ats' && r.data.verdict === 'PASS') ? 'var(--bad)' : 'var(--accent)';
@@ -770,7 +797,7 @@ async function runExtra(appId, key, path) {
   app[key] = { status: 'run' };
   save(); refreshIfShowing(appId);
   try {
-    const data = await api(path, { resume: v ? v.resume : app.draft, posting: app.posting, company: app.company, role: app.role });
+    const data = await api(path, { resume: v ? v.resume : app.draft, posting: app.posting, company: app.company, role: app.role, profile: profileText() });
     app[key] = { status: 'done', data, at: Date.now(), versionN: v?.n };
   } catch (err) {
     app[key] = { status: 'error', error: err.message };
@@ -976,7 +1003,7 @@ function viewEditor(r) {
   return `<div class="editor">
     <header class="ebar">
       <a class="crumbs back" href="${v ? `#/app/${app.id}` : '#/'}" style="display:inline-flex;align-items:center;gap:6px;min-height:44px;color:var(--muted)">${icon('back')}${v ? 'Panel results' : 'Applications'}</a>
-      <span class="slash" style="color:#3A3D45">/</span>
+      <span class="slash" style="color:var(--line-3)">/</span>
       <span style="font-weight:600">${esc(app.company)}</span>
       <span class="tag">${esc(app.role)} · ${v ? (changed ? `v${nextN} draft` : `v${v.n}`) : 'draft'}</span>
       <span class="muted" style="font-size:12px">${synth ? `${edits.filter((e) => e.state === 'Applied').length} of ${edits.length} edits applied` : v ? 'No suggested edits yet' : 'Not run yet'}${changed ? ' · unsaved changes' : ''}</span>
@@ -1029,7 +1056,7 @@ function viewEditor(r) {
 function viewLibrary() {
   const items = [...db.library].reverse();
   return shell('library', `
-    <header style="display:flex;flex-direction:column;gap:6px"><h1>Resume library</h1><p class="muted" style="margin:0">Saved resumes stay in this browser only. The newest one is your base resume.</p></header>
+    <header style="display:flex;flex-direction:column;gap:6px"><h1>Resume library</h1><p class="muted" style="margin:0">Saved resumes stay in this browser only. Your default resume is selected for every new application; change it here or in <a href="#/settings">Settings</a>.</p></header>
     <section class="card">
       <h2>Add a resume</h2>
       <label class="field">Name<input class="input mono" data-input="libName" value="${esc(ui.libName || '')}" placeholder="resume_master.tex"></label>
@@ -1038,6 +1065,7 @@ function viewLibrary() {
     </section>
     ${items.length ? `<div style="display:flex;flex-direction:column;gap:8px">${items.map((r) => `<div class="saved-item" style="cursor:default">
         <span class="mono" style="font-size:13px">${esc(r.name)}</span><span class="muted" style="font-size:12px">${esc(r.meta || '')}</span>
+        ${defaultResume()?.id === r.id ? '<span class="badge preferred">Default</span>' : `<button class="btn sm ghost" type="button" data-action="set-default" data-id="${r.id}">Make default</button>`}
         <span class="muted" style="margin-left:auto;font-size:12px">${esc(ago(r.savedAt))}</span>
         <button class="btn sm" type="button" data-action="lib-copy" data-id="${r.id}">Copy</button>
         <button class="btn sm ghost danger" type="button" data-action="lib-del" data-id="${r.id}" aria-label="Delete ${esc(r.name)}">${icon('trash', 14)}</button></div>`).join('')}</div>`
@@ -1048,35 +1076,33 @@ function viewAgents() {
     const t = tone(agentId, v === 'NO HIRE' ? 'PASS' : v);
     return `<span class="pill" style="background:${t.bg};color:${t.c}">${esc(v)}</span>`;
   };
+  // One expandable row per agent: summary line closed, full description open.
+  const row = ({ color, iconKey, name, tag, desc, about, checks, checksLabel = 'Looks at', verdicts, id, extra }) => `<details class="agent-row" style="--ag:${color}">
+      <summary><span class="ricon">${icon(iconKey, 17)}</span>
+        <span class="agent-row-main"><span class="agent-row-name">${name}${tag ? `<span class="mono faint" style="font-size:11px;margin-left:8px">${tag}</span>` : ''}</span><span class="muted" style="font-size:13px">${esc(desc)}</span></span>
+        ${verdicts ? `<span class="agent-row-verdicts">${verdicts.map((v) => pill(id, v)).join('')}</span>` : ''}
+        <span class="agent-row-chev">${icon('chev', 16)}</span></summary>
+      <div class="agent-detail">
+        <p class="agent-about">${esc(about)}</p>
+        <div class="agent-sec"><span class="agent-label">${checksLabel}</span><ul class="list">${checks.map((c) => `<li>${esc(c)}</li>`).join('')}</ul></div>
+        ${extra ? `<p class="muted" style="margin:0;font-size:13px">${esc(extra)}</p>` : ''}
+      </div></details>`;
+  const reviewers = AGENTS.map((g, i) => row({ color: g.color, iconKey: g.icon, name: g.name, tag: `#${i + 1}`, desc: g.desc, about: g.about, checks: g.checks, verdicts: g.verdicts, id: g.id, extra: g.extra })).join('');
+  const after = [
+    row({ color: 'var(--text-2)', iconKey: 'bolt', name: 'Synthesizer', desc: 'Merges every verdict into ranked fixes.', checksLabel: 'Gives you',
+      about: 'Runs after the seven reviewers. Reads all their verdicts together, merges duplicates and ranks what is wrong, worst first.',
+      checks: ['A bottom line and a short summary', 'The ranked fixes, with how many reviewers flagged each one', 'Suggested edits you can accept one by one in the editor', 'A rebuilt resume, with [ADD: …] placeholders for facts only you know', 'Questions to answer before you send it'] }),
+    row({ color: ADVISOR.color, iconKey: ADVISOR.icon, name: ADVISOR.name, tag: 'on demand', desc: 'Requirements you are missing, and how to close each gap.', checksLabel: 'Gives you',
+      about: "Finds the requirements in a posting that your resume doesn't show yet. Open it with the Suggestions button on any results page.",
+      checks: ['Each missing or weak requirement, marked required or preferred', 'Projects, clubs, classes, certifications or courses to close it, with rough time and how it would read on your resume', "Things you may already have done but haven't said"] }),
+    row({ color: COACH.color, iconKey: COACH.icon, name: COACH.name, tag: 'on demand', desc: 'Likely interview questions, and how to prepare.', checksLabel: 'Gives you',
+      about: 'Prepares you for the interview itself from the posting, including any interview process it describes, and your resume. Open it with the Interview prep button on any results page.',
+      checks: ['The interview stages, if the posting lists them (it never invents a process)', 'The topics the interview will likely focus on', "Technical, resume and behavioral questions, each with why they'd ask it and how to prepare", 'Good questions to ask the interviewer'] })
+  ].join('');
   return shell('agents', `
-    <header style="display:flex;flex-direction:column;gap:6px"><h1>Panel agents</h1><p class="muted" style="margin:0;max-width:720px;line-height:1.6">Seven reviewers read your resume against the job posting. Each one reads alone, as a different person, and none of them sees the others' notes. Then a synthesizer merges their verdicts into ranked fixes and edits.</p></header>
-    <div class="agent-grid">${AGENTS.map((g, i) => `<article class="agent-card" style="--ag:${g.color}">
-        <div class="agent-card-head"><span class="ricon">${icon(g.icon, 18)}</span>
-          <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="mono faint" style="font-size:11px">Reviewer ${i + 1}</span><h2>${g.name}</h2></span></div>
-        <p class="agent-about">${esc(g.about)}</p>
-        <div class="agent-sec"><span class="agent-label">Looks at</span><ul class="list">${g.checks.map((c) => `<li>${esc(c)}</li>`).join('')}</ul></div>
-        <div class="agent-sec"><span class="agent-label">Verdicts</span><span style="display:flex;flex-wrap:wrap;gap:6px">${g.verdicts.map((v) => pill(g.id, v)).join('')}</span></div>
-        ${g.extra ? `<p class="muted" style="margin:0;font-size:13px">${esc(g.extra)}</p>` : ''}
-      </article>`).join('')}
-      <article class="agent-card synth" style="--ag:#E8E8EA">
-        <div class="agent-card-head"><span class="ricon">${icon('bolt', 18)}</span>
-          <span style="display:flex;flex-direction:column;gap:2px"><span class="mono faint" style="font-size:11px">After the panel</span><h2>Synthesizer</h2></span></div>
-        <p class="agent-about">Reads all seven verdicts together, merges duplicates and ranks what's wrong, worst first.</p>
-        <div class="agent-sec"><span class="agent-label">Gives you</span><ul class="list"><li>A summary and the ranked list of fixes, with who flagged each one</li><li>Suggested edits you can accept one by one in the editor</li><li>A rebuilt resume, with [ADD: …] placeholders for facts only you know</li><li>Questions to answer before you send it</li></ul></div>
-      </article>
-      <article class="agent-card synth" style="--ag:${COACH.color}">
-        <div class="agent-card-head"><span class="ricon">${icon(COACH.icon, 18)}</span>
-          <span style="display:flex;flex-direction:column;gap:2px"><span class="mono faint" style="font-size:11px">On demand</span><h2>${COACH.name}</h2></span></div>
-        <p class="agent-about">Prepares you for the interview itself. Reads the job posting, including anything it says about the interview process, and your resume. Open it with the Interview prep button on any results page.</p>
-        <div class="agent-sec"><span class="agent-label">Gives you</span><ul class="list"><li>The interview stages, if the posting lists them (it never invents a process)</li><li>The topics the interview will likely focus on</li><li>Technical, resume and behavioral questions, each with why they'd ask it and how to prepare</li><li>Good questions to ask the interviewer</li></ul></div>
-      </article>
-      <article class="agent-card synth" style="--ag:${ADVISOR.color}">
-        <div class="agent-card-head"><span class="ricon">${icon(ADVISOR.icon, 18)}</span>
-          <span style="display:flex;flex-direction:column;gap:2px"><span class="mono faint" style="font-size:11px">On demand</span><h2>${ADVISOR.name}</h2></span></div>
-        <p class="agent-about">Finds the requirements in this posting that your resume doesn't show yet, and suggests how to close each gap. Open it with the Suggestions button on any results page.</p>
-        <div class="agent-sec"><span class="agent-label">Gives you</span><ul class="list"><li>Each missing or weak requirement, marked required or preferred</li><li>Personal projects, clubs, classes, certifications or courses to close it, with rough time and how it would read on your resume</li><li>Things you may already have done but haven't said</li></ul></div>
-      </article>
-    </div>
+    <header style="display:flex;flex-direction:column;gap:6px"><h1>Panel agents</h1><p class="muted" style="margin:0;max-width:720px;line-height:1.6">Seven reviewers read your resume against the job posting, each alone and as a different person. Click any agent to see what it does.</p></header>
+    <section class="agent-list" aria-label="Reviewers"><h2 class="agent-list-title">The panel</h2>${reviewers}</section>
+    <section class="agent-list" aria-label="After the panel"><h2 class="agent-list-title">After the panel</h2>${after}</section>
     <section class="card"><h2>What every reviewer returns</h2><p class="muted" style="margin:0;line-height:1.6">A verdict, the single line that hurt most (quoted exactly), up to three problems tagged as weak wording, missing, needs a number, keywords, shipped work or open question, and 2 to 5 key points.</p></section>
     <section class="card"><h2>Verdicts and score</h2><p class="muted" style="margin:0;line-height:1.6">The score averages every verdict: positive verdicts (PASS, INTERVIEW, HIRE) count 100, MAYBE 55, NO HIRE 10, REJECT and NO 0. Reviewers are told never to invent facts. This is a second opinion from language models, not a guarantee of an interview.</p></section>`);
 }
@@ -1152,6 +1178,66 @@ function viewCredits() {
     <p class="muted" style="margin:0;font-size:12px">Reviewers run on <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a> by Anthropic.</p>`);
 }
 
+// ---------- view: settings + profile ----------
+function viewSettings() {
+  const p = db.prefs;
+  const themes = [['dark', 'Dark'], ['light', 'Light'], ['system', 'Match system']];
+  const def = defaultResume();
+  return shell('settings', `
+    <header style="display:flex;flex-direction:column;gap:6px"><h1>Settings</h1>
+      <p class="muted" style="margin:0">Saved in this browser.</p></header>
+    <section class="card c1"><div class="card-head"><h2>Appearance</h2></div>
+      <div class="setrow"><span class="setlabel">Theme</span>
+        <div class="seg" role="group" aria-label="Theme">${themes.map(([v, l]) => `<button type="button" class="${p.theme === v ? 'on' : ''}" aria-pressed="${p.theme === v}" data-action="set-theme" data-v="${v}">${l}</button>`).join('')}</div></div>
+      <div class="setrow"><span class="setlabel">Accent color</span>
+        <div class="swatches" role="group" aria-label="Accent color">${Object.entries(ACCENTS).map(([k, [d, l]]) => `<button type="button" class="swatch ${p.accent === k ? 'on' : ''}" style="--sw:${document.documentElement.dataset.theme === 'light' ? l : d}" aria-pressed="${p.accent === k}" aria-label="${k}" title="${k[0].toUpperCase() + k.slice(1)}" data-action="set-accent" data-v="${k}"></button>`).join('')}</div></div>
+    </section>
+    <section class="card c2"><div class="card-head"><h2>Default resume</h2></div>
+      <p class="muted" style="margin:0;line-height:1.6">New applications start with this resume selected. You can still paste or upload a different one for any application.</p>
+      ${db.library.length ? `<label class="field">Resume
+        <select class="input" data-pref="defaultResumeId">
+          <option value="" ${!p.defaultResumeId ? 'selected' : ''}>Newest saved resume${db.library.length ? ` (${esc(db.library[db.library.length - 1].name)})` : ''}</option>
+          ${[...db.library].reverse().map((r) => `<option value="${r.id}" ${p.defaultResumeId === r.id ? 'selected' : ''}>${esc(r.name)} · ${esc(r.meta || '')} · ${esc(ago(r.savedAt))}</option>`).join('')}
+        </select></label>
+        ${def ? `<span class="muted" style="font-size:13px">Using <span class="mono">${esc(def.name)}</span>.</span>` : ''}`
+      : `<div class="empty" style="padding:24px">No saved resumes yet. <a class="btn sm" href="#/library">Add one to the library</a></div>`}
+    </section>
+    <section class="card c3"><div class="card-head"><h2>Profile</h2></div>
+      <p class="muted" style="margin:0;line-height:1.6">Your school, graduation date, work authorization and target roles. ${db.profile.shareWithAgents ? 'Shared with the Suggestions and Interview prep agents.' : 'Not shared with any agent.'}</p>
+      <span><a class="btn sm" href="#/profile">Edit profile${icon('arrow', 14)}</a></span>
+    </section>`);
+}
+const PROFILE_FIELDS = [
+  ['name', 'Full name', 'Your name'], ['email', 'Email', 'you@example.com'],
+  ['school', 'School', 'Your university'], ['degree', 'Degree and major', 'B.S. Computer Science'],
+  ['graduation', 'Expected graduation', 'May 2028'], ['standing', 'Year or standing', 'Junior'],
+  ['location', 'Location', 'City, State'], ['authorization', 'Work authorization', 'e.g. U.S. citizen, permanent resident, needs sponsorship'],
+  ['targets', 'Target roles', 'e.g. Embedded software, backend, data'], ['links', 'Links', 'GitHub, LinkedIn, portfolio']
+];
+function viewProfile() {
+  const pr = db.profile;
+  return shell('profile', `
+    <header class="profile-head"><span class="avatar big">${esc(initials(pr.name))}</span>
+      <span style="display:flex;flex-direction:column;gap:4px;min-width:0"><h1>${esc(pr.name || 'Your profile')}</h1>
+        <span class="muted">${esc([pr.degree, pr.school].filter(Boolean).join(' · ') || 'Add your details below. They save as you type.')}</span></span></header>
+    <section class="card c2"><div class="card-head"><h2>About you</h2><span class="muted" style="font-size:12px">Saved in this browser as you type</span></div>
+      <div class="pgrid">${PROFILE_FIELDS.map(([k, label, ph]) => `<label class="field">${label}<input class="input" data-profile="${k}" value="${esc(pr[k] || '')}" placeholder="${esc(ph)}"></label>`).join('')}</div>
+      <label class="field">Notes for the agents<textarea class="textarea" rows="4" data-profile="notes" placeholder="Anything true about you that isn't on your resume: classes in progress, clubs, what you're learning, constraints like start dates.">${esc(pr.notes || '')}</textarea></label>
+    </section>
+    <section class="card c4"><div class="card-head"><h2>How agents use this</h2></div>
+      <label class="checkrow"><input type="checkbox" data-profile-check="shareWithAgents" ${pr.shareWithAgents ? 'checked' : ''}>
+        <span>Share my profile with the <b>Suggestions</b> and <b>Interview prep</b> agents</span></label>
+      <p class="muted" style="margin:0;line-height:1.6;font-size:13px">They use it to tailor advice, for example suggesting classes for your year or flagging a work-authorization requirement. The seven panel reviewers never see it: they judge your resume alone, like a real screener would.</p>
+    </section>`);
+}
+function profileText() {
+  const pr = db.profile;
+  if (!pr.shareWithAgents) return '';
+  const lines = PROFILE_FIELDS.filter(([k]) => k !== 'email' && pr[k]?.trim()).map(([k, label]) => `${label}: ${pr[k].trim()}`);
+  if (pr.notes?.trim()) lines.push(`Notes: ${pr.notes.trim()}`);
+  return lines.join('\n');
+}
+
 // ---------- render ----------
 function render() {
   const r = route();
@@ -1168,6 +1254,8 @@ function render() {
   else if (r.name === 'agents') html = viewAgents();
   else if (r.name === 'setup') html = viewSetup();
   else if (r.name === 'credits') html = viewCredits();
+  else if (r.name === 'settings') html = viewSettings();
+  else if (r.name === 'profile') html = viewProfile();
   if (html) $app.innerHTML = html;
   updateDock(r);
   if (r.name === 'editor') markPages();
@@ -1175,12 +1263,19 @@ function render() {
     const el = $app.querySelector(`[data-input="${focusKey}"]`);
     if (el) { el.focus(); try { el.setSelectionRange(selStart, selEnd); } catch (e) { /* not a text field */ } }
   }
-  document.title = { apps: 'Applications', new: 'New application', results: 'Panel results', suggest: 'Suggestions', interview: 'Interview prep', editor: 'Resume editor', library: 'Resume library', agents: 'Panel agents', setup: 'Setup', credits: 'Acknowledgements' }[r.name] + ' · Hiring Panel';
+  document.title = { apps: 'Applications', new: 'New application', results: 'Panel results', suggest: 'Suggestions', interview: 'Interview prep', editor: 'Resume editor', library: 'Resume library', agents: 'Panel agents', setup: 'Setup', credits: 'Acknowledgements', settings: 'Settings', profile: 'Profile' }[r.name] + ' · Hiring Panel';
 }
 
 // ---------- events ----------
 let previewTimer;
 $app.addEventListener('input', (e) => {
+  if (e.target.dataset.profile) {
+    db.profile[e.target.dataset.profile] = e.target.value;
+    save();
+    const av = $app.querySelector('.topbar .avatar');
+    if (av) av.textContent = initials(db.profile.name);
+    return;
+  }
   const key = e.target.dataset.input;
   if (!key) return;
   const r = route();
@@ -1199,6 +1294,8 @@ $app.addEventListener('input', (e) => {
   if (ui.form && key in ui.form) ui.form[key] = key === 'target' ? Number(val) : val;
 });
 $app.addEventListener('change', (e) => {
+  if (e.target.dataset.pref) { db.prefs[e.target.dataset.pref] = e.target.value || null; save(); render(); toast('Default resume updated.'); return; }
+  if (e.target.dataset.profileCheck) { db.profile[e.target.dataset.profileCheck] = e.target.checked; save(); return; }
   if (e.target.dataset.check && ui.form) ui.form[e.target.dataset.check] = e.target.checked;
   if (e.target.matches('[data-file]') && e.target.files[0]) readFile(e.target.files[0]).catch((err) => toast('Could not read that file: ' + err.message));
 });
@@ -1360,6 +1457,9 @@ $app.addEventListener('click', async (e) => {
       render();
       break;
     case 'connect': openConnector(); break;
+    case 'set-theme': db.prefs.theme = el.dataset.v; save(); applyTheme(); render(); break;
+    case 'set-accent': db.prefs.accent = el.dataset.v; save(); applyTheme(); render(); break;
+    case 'set-default': db.prefs.defaultResumeId = el.dataset.id; save(); render(); toast('Set as your default resume.'); break;
     case 'run-interview': runExtra(app.id, 'interview', 'interview'); break;
     case 'run-suggest': runExtra(app.id, 'suggestions', 'suggest'); break;
     case 'copy-cmd':

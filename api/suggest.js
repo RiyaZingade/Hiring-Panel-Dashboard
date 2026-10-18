@@ -51,11 +51,11 @@ const tool = {
 };
 
 export default function handler(req, res) {
-  return handle(req, res, async ({ resume, posting, company, role }) => {
+  return handle(req, res, async ({ resume, posting, company, role, profile }) => {
     if (!String(posting || '').trim()) throw new Error('This application has no job posting.');
     return callTool({
       system: `You are a career advisor for students. Compare the job posting's required and preferred qualifications with the resume. For each one the resume does not show, or only mentions without demonstrating, suggest specific, realistic ways to close the gap: a personal project, a club or team, a class topic, a certification or online course, or a kind of experience. Size suggestions for a student with limited time, and prefer ones that produce something concrete to show. Name class topics rather than specific course numbers, since you don't know the school's catalog. Never treat a requirement as met unless the resume shows it. ${HONESTY}`,
-      user: `Role: ${clip(role, 200)} at ${clip(company, 200)}\n\n<job_posting>\n${clip(posting)}\n</job_posting>\n\n<resume>\n${clip(resume)}\n</resume>\n\nThe resume may be LaTeX source. Ignore \\add{...} placeholders.`,
+      user: `Role: ${clip(role, 200)} at ${clip(company, 200)}\n\n<job_posting>\n${clip(posting)}\n</job_posting>\n\n<resume>\n${clip(resume)}\n</resume>\n\n${profile ? `<candidate_profile>\nFacts the candidate gave about themselves (not on the resume, so don't treat them as shown to employers):\n${clip(profile, 3000)}\n</candidate_profile>\n\n` : ''}The resume may be LaTeX source. Ignore \\add{...} placeholders.`,
       tool,
       maxTokens: 4000
     });
