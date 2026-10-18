@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/review.js": { "maxDuration": 120 },
+    "api/synthesize.js": { "maxDuration": 180 },
+    "api/rewrite.js": { "maxDuration": 180 }
+  }
+}

@@ -1,0 +1,31 @@
+# Dependencies and build output
+node_modules/
+dist/
+.output/
+
+# Vercel
+.vercel/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Design source files (not part of the app)
+source.html
+unpacked/
+
+# Resumes and PDFs you might drop in here while testing
+*.pdf
+*.tex

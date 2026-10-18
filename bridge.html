@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel Studio connector</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0B0C0E; color: #E8E9EC; font: 14px/1.5 -apple-system, system-ui, sans-serif; }
+    main { max-width: 340px; padding: 24px; display: flex; flex-direction: column; gap: 8px; }
+    h1 { margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    p { margin: 0; color: #A0A3AB; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #E0B04F; flex: none; }
+    .dot.ok { background: #4FBF7F; }
+    .dot.bad { background: #E5675F; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1><span class="dot" id="dot"></span><span id="title">Connecting…</span></h1>
+    <p id="text"></p>
+  </main>
+  <script>
+    // Relays panel calls from the hosted site to this server. Safari won't let
+    // an https page call http://localhost directly, but it will let two windows
+    // pass messages, and this window can call its own server.
+    const HOSTED = '__HOSTED_ORIGIN__';
+    const opener = window.opener;
+    const show = (title, text, state) => {
+      document.getElementById('title').textContent = title;
+      document.getElementById('text').textContent = text;
+      document.getElementById('dot').className = 'dot ' + state;
+    };
+
+    if (!opener) {
+      show('Open this from Panel Studio', `This window connects ${HOSTED} to the server on this computer. Open Panel Studio and click Connect.`, 'bad');
+    } else {
+      show('Connected', 'Keep this window open while you use Panel Studio. You can minimize it.', 'ok');
+      const hello = () => { try { opener.postMessage({ type: 'hps-bridge-ready' }, HOSTED); } catch (e) { /* opener navigated elsewhere */ } };
+      hello();
+      const timer = setInterval(() => {
+        if (opener.closed) { clearInterval(timer); show('Panel Studio was closed', 'You can close this window.', 'bad'); } else hello();
+      }, 2000);
+
+      window.addEventListener('message', async (e) => {
+        if (e.origin !== HOSTED || e.source !== opener || e.data?.type !== 'hps-call') return;
+        const { id, path, body } = e.data;
+        let status = 0, data;
+        try {
+          const res = path === 'health'
+            ? await fetch('/health', { cache: 'no-store' })
+            : await fetch('/api/' + encodeURIComponent(path), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body ?? {}) });
+          status = res.status;
+          data = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
+        } catch (err) {
+          data = { error: 'Lost the connection to the local server. Is npm run local still running?' };
+        }
+        opener.postMessage({ type: 'hps-reply', id, status, data }, HOSTED);
+      });
+    }
+  </script>
+</body>
+</html>
