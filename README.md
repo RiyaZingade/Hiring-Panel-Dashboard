@@ -1,4 +1,4 @@
-# Hiring Panel Studio
+# Hiring Panel
 
 Run your resume past a panel of seven AI reviewers, each reading it alone against a real job posting:
 

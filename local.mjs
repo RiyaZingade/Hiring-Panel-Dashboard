@@ -1,4 +1,4 @@
-// Runs Hiring Panel Studio on this machine. Reviewers go through the
+// Runs Hiring Panel on this machine. Reviewers go through the
 // signed-in Claude Code CLI, so no API key is needed. Start: npm run local
 //
 // The hosted site (hiring-panel-studio.vercel.app) also talks to this server
@@ -117,7 +117,7 @@ async function onRequest(req, res) {
 
 // Listen on both IPv4 and IPv6 loopback: browsers may resolve "localhost" to either.
 const v4 = http.createServer(onRequest).listen(port, '127.0.0.1', () => {
-  console.log(`Hiring Panel Studio running at http://localhost:${port}`);
+  console.log(`Hiring Panel running at http://localhost:${port}`);
   console.log(`The hosted site can use it too: ${HOSTED_ORIGIN}`);
   console.log('Reviewers run through your Claude Code login. Press Ctrl+C to stop.');
 });

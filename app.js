@@ -1,16 +1,34 @@
-// Hiring Panel Studio — single-page app. State lives in this browser's
+// Hiring Panel — single-page app. State lives in this browser's
 // localStorage; the /api routes run each reviewer through Claude.
 
 const REPO_URL = 'https://github.com/RiyaZingade/Hiring-Panel';
 
+// `about` and `checks` describe each reviewer on the Panel agents page; they
+// summarize the briefs in api/review.js, so keep the two in step.
 const AGENTS = [
-  { id: 'ats', name: 'Automated screen', desc: 'Keywords and hard requirements.', icon: 'bot' },
-  { id: 'manager', name: 'Hiring manager', desc: 'Would they get an interview?', icon: 'brief' },
-  { id: 'dayone', name: 'Day-one hiring manager', desc: 'Could you contribute week one?', icon: 'dayone' },
-  { id: 'rival', name: 'Rival applicant', desc: 'Would they lose to you?', icon: 'rival' },
-  { id: 'ceo', name: 'CEO', desc: 'Impact: what changed, and by how much.', icon: 'ceo' },
-  { id: 'recruiter', name: 'Recruiter', desc: '30 seconds on the top third.', icon: 'search' },
-  { id: 'teammate', name: 'Teammate', desc: 'How you work with others.', icon: 'team' }
+  { id: 'ats', name: 'Automated screen', desc: 'Keywords and hard requirements.', icon: 'bot', color: '#5FD4D0', verdicts: ['PASS', 'REJECT'],
+    about: 'Plays the applicant-tracking system that decides whether a human ever sees your resume. It reads like software, not like a person.',
+    checks: ['Text reads cleanly top to bottom (no columns, tables or images that break parsing)', 'Job titles, employers and dates are clear', "Which of the posting's key skills and terms appear, and which are missing", 'Contact details, length and filler'],
+    extra: 'Also lists the matched and missing keywords.' },
+  { id: 'manager', name: 'Hiring manager', desc: 'Would they get an interview?', icon: 'brief', color: '#8AB4FF', verdicts: ['INTERVIEW', 'NO'],
+    about: 'The person who decides whether you get an interview. Makes the call in the first ten seconds, the way a busy manager really does.',
+    checks: ['What stands out in the first ten seconds', 'Whether your experience matches what the team needs', 'The three weakest lines for this role'],
+    extra: 'Also lists the questions it would ask you in the interview.' },
+  { id: 'dayone', name: 'Day-one hiring manager', desc: 'Could you contribute week one?', icon: 'dayone', color: '#9BE3C4', verdicts: ['HIRE', 'MAYBE', 'NO HIRE'],
+    about: 'A hiring manager reading for one thing: could you do the job on day one, without months of ramp-up?',
+    checks: ["Skills the posting requires that you've already proven", 'Requirements you only mention but never show', 'Gaps you would have to learn on the job'] },
+  { id: 'rival', name: 'Rival applicant', desc: 'Would they lose to you?', icon: 'rival', color: '#F58BA8', verdicts: ['HIRE', 'MAYBE', 'NO HIRE'],
+    about: 'Another candidate who applied for the same job. Reads your resume as competition and looks for where a strong rival beats you.',
+    checks: ['Tools, projects or results a typical strong applicant would show', 'Lines that sound weaker than they should', 'Where you lose a side-by-side comparison'] },
+  { id: 'ceo', name: 'CEO', desc: 'Impact: what changed, and by how much.', icon: 'ceo', color: '#F2C66D', verdicts: ['HIRE', 'MAYBE', 'NO HIRE'],
+    about: 'Reads for impact: what did you change, and by how much? Activity without outcomes reads as noise.',
+    checks: ['Results with numbers: users, time saved, defects found, scale', 'Bullets that list duties instead of outcomes', 'Whether your work mattered to anyone'] },
+  { id: 'recruiter', name: 'Recruiter', desc: '30 seconds on the top third.', icon: 'search', color: '#B9A3FF', verdicts: ['HIRE', 'MAYBE', 'NO HIRE'],
+    about: 'Has 30 seconds and 100 resumes today. Reads only the top third of the page and decides whether to pass you to the hiring manager.',
+    checks: ['Header and contact details', 'Education, graduation date and eligibility', 'Skills line and the first experience entry'] },
+  { id: 'teammate', name: 'Teammate', desc: 'How you work with others.', icon: 'team', color: '#F0A35E', verdicts: ['HIRE', 'MAYBE', 'NO HIRE'],
+    about: 'An engineer who would work next to you. Reads for what you would be like to build things with.',
+    checks: ['Collaboration and communication', 'Code review, documentation and taking feedback', 'Ownership: seeing work through to the end'] }
 ];
 const AGENT = Object.fromEntries(AGENTS.map((a) => [a.id, a]));
 
@@ -67,6 +85,9 @@ function save() {
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Math.random().toString(36).slice(2, 10);
+// A stable color per company name, for the avatar on each row.
+const HUES = ['#8AB4FF', '#B9A3FF', '#5FD4D0', '#9BE3C4', '#F2C66D', '#F0A35E', '#F58BA8'];
+const hue = (name) => HUES[[...String(name)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % HUES.length];
 const findApp = (id) => db.apps.find((a) => a.id === id);
 const latest = (app) => app.versions[app.versions.length - 1];
 function ago(t) {
@@ -263,7 +284,7 @@ function connBadge() {
   };
   const [c, label] = map[conn.state];
   return `<div class="conn"><span class="dot" style="background:${c}"></span>${label}
-    ${conn.state === 'offline' ? '<button type="button" class="btn sm" data-action="connect" style="margin-left:auto">Connect</button>' : ''}</div>`;
+    ${conn.state === 'offline' ? (IS_LOCAL ? '' : '<button type="button" class="btn sm" data-action="connect" style="margin-left:auto">Connect</button>') : ''}</div>`;
 }
 
 // ---------- running the panel ----------
@@ -356,6 +377,8 @@ function route() {
   if (parts[0] === 'new') return { name: 'new' };
   if (parts[0] === 'library') return { name: 'library' };
   if (parts[0] === 'agents') return { name: 'agents' };
+  if (parts[0] === 'setup') return { name: 'setup' };
+  if (parts[0] === 'credits') return { name: 'credits' };
   if (parts[0] === 'app' && parts[1]) {
     if (parts[2] === 'edit') return { name: 'editor', id: parts[1] };
     return { name: 'results', id: parts[1], v: parts[2] ? Number(parts[2].replace('v', '')) : null };
@@ -389,24 +412,17 @@ function shell(active, content) {
   const link = (id, href, label, extra = '') => `<a href="${href}" class="${active === id ? 'on' : ''}">${label}${extra}</a>`;
   return `<div class="shell">
     <nav class="nav" aria-label="Main">
-      <div class="brand">${LOGO}<span>Panel Studio</span></div>
+      <div class="brand">${LOGO}<span>Hiring Panel</span></div>
       ${connBadge()}
       <div class="navlinks">
         ${link('apps', '#/', 'Applications', `<span class="count">${db.apps.length}</span>`)}
         ${link('new', '#/new', 'New application')}
         ${link('library', '#/library', 'Resume library', `<span class="count">${db.library.length}</span>`)}
         ${link('agents', '#/agents', 'Panel agents')}
+        <span class="navsep" role="separator"></span>
+        ${link('setup', '#/setup', 'Setup', conn.state === 'offline' ? '<span class="navdot" title="Not connected"></span>' : '')}
+        ${link('credits', '#/credits', 'Acknowledgements')}
       </div>
-      <details class="setup" ${ui.setupOpen ?? conn.state === 'offline' ? 'open' : ''} data-setup>
-        <summary>Setup${icon('chev', 14)}</summary>
-        <p class="setup-note">Needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js 20+</a> and <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a>, installed and signed in. Panels run on your own Claude plan.</p>
-        <ol>
-          <li><b>First time only.</b> Get the code:<code>git clone ${REPO_URL}.git</code></li>
-          <li><b>Each time.</b> In Terminal, start the server and leave the window open:<code>cd Hiring-Panel &amp;&amp; npm run local</code></li>
-          <li><b>Connect.</b> Chrome finds it on its own; click <b>Allow</b> if it asks about your local network. In Safari, click <b>Connect</b> above and keep the small window that opens (you can minimize it). Or use <a href="http://localhost:3000">localhost:3000</a> directly.</li>
-          <li><b>Done?</b> Press <kbd>Ctrl+C</kbd> in Terminal.</li>
-        </ol>
-      </details>
       <div class="basecard">
         <span style="font-size:12px" class="muted">Base resume</span>
         ${base ? `<span class="mono" style="font-size:13px">${esc(base.name)}</span><span style="font-size:12px" class="muted">Saved ${esc(ago(base.savedAt))}</span>`
@@ -448,7 +464,7 @@ function viewApps() {
     }).join('');
     const finished = v ? Object.values(v.reviews).filter((r) => r.status === 'done').length : 0;
     return `<a class="trow" href="${v ? `#/app/${a.id}` : `#/app/${a.id}/edit`}">
-      <span class="who"><span class="initial">${esc((a.company.replace(/[^A-Za-z]/g, '').charAt(0) || '?').toUpperCase())}</span>
+      <span class="who"><span class="initial" style="--ag:${hue(a.company)}">${esc((a.company.replace(/[^A-Za-z]/g, '').charAt(0) || '?').toUpperCase())}</span>
         <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:500">${esc(a.company)}</span><span class="role">${esc(a.role)}</span></span></span>
       <span style="display:inline-flex;align-items:center;gap:8px;font-size:13px"><span class="dot" style="background:${st.c}"></span>${st.label}</span>
       <span class="bars" aria-label="${finished} of ${v ? v.agents.length : 0} reviewers finished">${bars}</span>
@@ -463,7 +479,7 @@ function viewApps() {
         <p class="muted" style="margin:0">Each application runs its own panel. Open one to read the feedback and edit.</p></div>
       <a class="btn primary" href="#/new" style="margin-left:auto">${icon('plus')}New application</a>
     </header>
-    <section class="stats" aria-label="Summary">${stats.map(([l, v, s]) => `<div class="stat"><span class="muted" style="font-size:12px">${l}</span><span class="v">${v}</span><span class="muted" style="font-size:12px">${s}</span></div>`).join('')}</section>
+    <section class="stats" aria-label="Summary">${stats.map(([l, v, s], i) => `<div class="stat t${i + 1}"><span class="muted" style="font-size:12px">${l}</span><span class="v">${v}</span><span class="muted" style="font-size:12px">${s}</span></div>`).join('')}</section>
     <div class="toolbar">
       ${['All', 'Running', 'Needs review', 'Iterating', 'Ready', 'Drafts'].map((l) => `<button type="button" class="filter ${ui.filter === l ? 'on' : ''}" data-action="filter" data-v="${l}">${l}</button>`).join('')}
       <label class="search">${icon('search', 14)}<span class="sr">Search applications</span>
@@ -501,7 +517,7 @@ function viewNew() {
   return shell('new', `
     <header class="crumbs"><a class="back" href="#/">${icon('back')}Applications</a><span class="slash">/</span><h1 class="sm">New application</h1></header>
     <div class="grid2">
-      <section class="card" aria-labelledby="jp">
+      <section class="card c1" aria-labelledby="jp">
         <div class="card-head"><span class="step">01</span><h2 id="jp">Job posting</h2></div>
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
           <label class="field">Company<input class="input" type="text" data-input="company" value="${esc(f.company)}" placeholder="Voyager Technologies"></label>
@@ -510,19 +526,19 @@ function viewNew() {
         <label class="field">Posting text<textarea class="textarea" rows="14" data-input="posting" style="min-height:320px" placeholder="Paste the full job description — responsibilities, qualifications, about the company…">${esc(f.posting)}</textarea></label>
         <span class="muted" style="font-size:12px">The panel reads the whole posting, so include qualifications and the company blurb.</span>
       </section>
-      <section class="card" aria-labelledby="rs">
+      <section class="card c2" aria-labelledby="rs">
         <div class="card-head"><span class="step">02</span><h2 id="rs">Resume</h2>
           <div class="seg" role="group" aria-label="Resume source" style="margin-left:auto">${modes.map(([id, l]) => `<button type="button" class="${f.mode === id ? 'on' : ''}" aria-pressed="${f.mode === id}" data-action="mode" data-v="${id}">${l}</button>`).join('')}</div>
         </div>
         ${resumePane}
       </section>
     </div>
-    <section class="card" aria-labelledby="pn">
+    <section class="card c3" aria-labelledby="pn">
       <div class="card-head"><span class="step">03</span><h2 id="pn">Panel</h2><span class="muted" style="font-size:12px">Reviewers run in parallel, then a synthesizer merges their verdicts.</span></div>
       <div class="agents">${AGENTS.map((g) => {
         const on = f.agents.includes(g.id);
-        return `<button type="button" class="agent ${on ? 'on' : ''}" aria-pressed="${on}" data-action="toggle-agent" data-id="${g.id}">
-          <span style="display:flex;align-items:center;gap:8px;width:100%"><span style="font-weight:500">${g.name}</span><span class="check" aria-hidden="true"></span></span>
+        return `<button type="button" class="agent ${on ? 'on' : ''}" style="--ag:${g.color}" aria-pressed="${on}" data-action="toggle-agent" data-id="${g.id}">
+          <span style="display:flex;align-items:center;gap:8px;width:100%"><span class="ricon sm">${icon(g.icon, 14)}</span><span style="font-weight:500">${g.name}</span><span class="check" aria-hidden="true"></span></span>
           <span class="muted" style="font-size:12px;line-height:1.45">${g.desc}</span></button>`;
       }).join('')}</div>
       <div class="opts">
@@ -632,7 +648,7 @@ function viewResults(r) {
     return `<div class="rblock">
       <div class="rrow" role="row">
         <span class="rnum" role="cell">${i + 1}</span>
-        <span class="rcell" role="cell"><span class="ricon">${icon(g.icon, 17, 'style="color:var(--text-2)"')}</span><span style="font-weight:500">${g.name}</span></span>
+        <span class="rcell" role="cell"><span class="ricon" style="--ag:${g.color}">${icon(g.icon, 17)}</span><span style="font-weight:500">${g.name}</span></span>
         <span class="rcell" role="cell">${verdictCell}</span>
         <span class="rcell" role="cell">${hurtCell}</span>
         <span role="cell" style="display:grid;place-items:center">${full ? `<button type="button" class="expander ${open ? 'open' : ''}" data-action="toggle-row" data-id="${id}" aria-expanded="${open}" aria-label="${open ? 'Hide' : 'Show'} full note from ${g.name}">${icon('chev')}</button>` : ''}</span>
@@ -864,10 +880,100 @@ function viewLibrary() {
       : '<div class="empty">Nothing saved yet.</div>'}`);
 }
 function viewAgents() {
+  const pill = (agentId, v) => {
+    const t = tone(agentId, v === 'NO HIRE' ? 'PASS' : v);
+    return `<span class="pill" style="background:${t.bg};color:${t.c}">${esc(v)}</span>`;
+  };
   return shell('agents', `
-    <header style="display:flex;flex-direction:column;gap:6px"><h1>Panel agents</h1><p class="muted" style="margin:0">Each reviewer reads alone, then a synthesizer merges their notes into ranked fixes and edits. Placeholders mark facts only you can supply.</p></header>
-    <div class="agents">${AGENTS.map((g) => `<div class="agent on" style="cursor:default"><span style="display:flex;align-items:center;gap:10px"><span class="ricon">${icon(g.icon, 17, 'style="color:var(--text-2)"')}</span><span style="font-weight:500">${g.name}</span></span><span class="muted" style="font-size:12px">${g.desc}</span></div>`).join('')}</div>
-    <section class="card"><h2>Verdicts and score</h2><p class="muted" style="margin:0;line-height:1.6">The automated screen says PASS or REJECT; the hiring manager says INTERVIEW or NO; the other five say HIRE, MAYBE or NO HIRE. The score averages them: positive verdicts count 100, MAYBE 55, NO HIRE 10, REJECT and NO 0. This is a second opinion from language models, not a guarantee of an interview.</p></section>`);
+    <header style="display:flex;flex-direction:column;gap:6px"><h1>Panel agents</h1><p class="muted" style="margin:0;max-width:720px;line-height:1.6">Seven reviewers read your resume against the job posting. Each one reads alone, as a different person, and none of them sees the others' notes. Then a synthesizer merges their verdicts into ranked fixes and edits.</p></header>
+    <div class="agent-grid">${AGENTS.map((g, i) => `<article class="agent-card" style="--ag:${g.color}">
+        <div class="agent-card-head"><span class="ricon">${icon(g.icon, 18)}</span>
+          <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="mono faint" style="font-size:11px">Reviewer ${i + 1}</span><h2>${g.name}</h2></span></div>
+        <p class="agent-about">${esc(g.about)}</p>
+        <div class="agent-sec"><span class="agent-label">Looks at</span><ul class="list">${g.checks.map((c) => `<li>${esc(c)}</li>`).join('')}</ul></div>
+        <div class="agent-sec"><span class="agent-label">Verdicts</span><span style="display:flex;flex-wrap:wrap;gap:6px">${g.verdicts.map((v) => pill(g.id, v)).join('')}</span></div>
+        ${g.extra ? `<p class="muted" style="margin:0;font-size:13px">${esc(g.extra)}</p>` : ''}
+      </article>`).join('')}
+      <article class="agent-card synth" style="--ag:#E8E8EA">
+        <div class="agent-card-head"><span class="ricon">${icon('bolt', 18)}</span>
+          <span style="display:flex;flex-direction:column;gap:2px"><span class="mono faint" style="font-size:11px">After the panel</span><h2>Synthesizer</h2></span></div>
+        <p class="agent-about">Reads all seven verdicts together, merges duplicates and ranks what's wrong, worst first.</p>
+        <div class="agent-sec"><span class="agent-label">Gives you</span><ul class="list"><li>A summary and the ranked list of fixes, with who flagged each one</li><li>Suggested edits you can accept one by one in the editor</li><li>A rebuilt resume, with [ADD: …] placeholders for facts only you know</li><li>Questions to answer before you send it</li></ul></div>
+      </article>
+    </div>
+    <section class="card"><h2>What every reviewer returns</h2><p class="muted" style="margin:0;line-height:1.6">A verdict, the single line that hurt most (quoted exactly), up to three problems tagged as weak wording, missing, needs a number, keywords, shipped work or open question, and a full note under 120 words.</p></section>
+    <section class="card"><h2>Verdicts and score</h2><p class="muted" style="margin:0;line-height:1.6">The score averages every verdict: positive verdicts (PASS, INTERVIEW, HIRE) count 100, MAYBE 55, NO HIRE 10, REJECT and NO 0. Reviewers are told never to invent facts. This is a second opinion from language models, not a guarantee of an interview.</p></section>`);
+}
+
+// ---------- view: setup + acknowledgements ----------
+function cmd(text) {
+  return `<div class="cmd"><code>${esc(text)}</code><button type="button" class="btn sm" data-action="copy-cmd" data-cmd="${esc(text)}">Copy</button></div>`;
+}
+function viewSetup() {
+  const status = {
+    local: ['good', "You're on localhost, so you're already connected."],
+    connected: ['good', conn.win ? 'Connected through the connector window.' : 'Connected to the server on your computer.'],
+    checking: ['warn', 'Looking for the local server…'],
+    offline: ['bad', IS_LOCAL ? 'The server stopped. Start it again (step 2).' : 'Not connected yet. Start the server (step 2), then connect (step 3).']
+  }[conn.state];
+  const reqs = [
+    ['Node.js 20 or newer', 'Runs the local server.', 'node --version', 'https://nodejs.org'],
+    ['Claude Code, installed', 'Runs each reviewer.', 'claude --version', 'https://claude.com/claude-code'],
+    ['Signed in to Claude Code', 'Run claude once and finish the login.', 'claude', null]
+  ];
+  return shell('setup', `
+    <header style="display:flex;flex-direction:column;gap:6px"><h1>Setup</h1>
+      <p class="muted" style="margin:0;max-width:720px;line-height:1.6">Hiring Panel runs on your own computer, through your own Claude Code login. There's no API key and nothing to pay beyond your Claude plan. Setup takes about two minutes.</p></header>
+    <div class="status-banner ${status[0]}"><span class="dot"></span><span>${status[1]}</span>
+      ${conn.state === 'offline' && !IS_LOCAL ? '<button type="button" class="btn sm" data-action="connect" style="margin-left:auto">Connect</button>' : ''}</div>
+    <section class="card c1"><div class="card-head"><span class="step">00</span><h2>Before you start</h2></div>
+      <p class="muted" style="margin:0">You need all three, or the panel won't run.</p>
+      <div class="reqs">${reqs.map(([t, d, c, url]) => `<div class="req"><span style="font-weight:600">${url ? `<a href="${url}" target="_blank" rel="noopener">${t}</a>` : t}</span><span class="muted" style="font-size:13px">${d}</span>${cmd(c)}</div>`).join('')}</div>
+    </section>
+    <section class="card c2"><div class="card-head"><span class="step">01</span><h2>Get the code</h2><span class="muted" style="font-size:12px">First time only</span></div>
+      ${cmd(`git clone ${REPO_URL}.git`)}
+      <p class="muted" style="margin:0;font-size:13px">There's nothing to install: the app has no dependencies.</p>
+    </section>
+    <section class="card c3"><div class="card-head"><span class="step">02</span><h2>Start the server</h2><span class="muted" style="font-size:12px">Each time you use it</span></div>
+      <p class="muted" style="margin:0">Open Terminal, run this, and leave the window open while you work:</p>
+      ${cmd('cd Hiring-Panel && npm run local')}
+    </section>
+    <section class="card c4"><div class="card-head"><span class="step">03</span><h2>Connect this page</h2></div>
+      <div class="browsers">
+        <div class="browser"><span style="font-weight:600">Chrome</span><span class="muted" style="font-size:13px;line-height:1.55">Connects on its own. If Chrome asks to let the site access devices on your local network, click <b>Allow</b>.</span></div>
+        <div class="browser"><span style="font-weight:600">Safari and others</span><span class="muted" style="font-size:13px;line-height:1.55">Click <b>Connect</b>. A small window opens; keep it open (you can minimize it). If nothing opens, allow pop-ups for this site.</span></div>
+        <div class="browser"><span style="font-weight:600">Any browser</span><span class="muted" style="font-size:13px;line-height:1.55">Skip connecting and open <a href="http://localhost:3000">localhost:3000</a>, served straight from the server.</span></div>
+      </div>
+      <p class="muted" style="margin:0;font-size:13px">Applications are saved separately for each address, so pick one and stick with it.</p>
+    </section>
+    <section class="card c5"><div class="card-head"><span class="step">04</span><h2>When you're done</h2></div>
+      <p class="muted" style="margin:0">Press <kbd>Ctrl+C</kbd> in the Terminal window, or close it.</p>
+    </section>
+    <section class="card note"><h2>Good to know</h2><ul class="list">
+      <li><b>Usage:</b> one full panel is about 9 Claude calls, all on your own plan. On the Pro plan, several panels in a row can hit your usage limit, so space them out or turn off reviewers you don't need.</li>
+      <li><b>Exact PDFs:</b> install a LaTeX engine (<code class="inline">brew install tectonic</code>) and Download PDF compiles your real LaTeX. Without one, it prints the approximate preview.</li>
+      <li><b>"Port 3000 is already in use":</b> the server is already running in another Terminal window. Use that one.</li>
+      <li><b>"claude: command not found":</b> install Claude Code, then open a new Terminal window.</li>
+      <li><b>Privacy:</b> resumes stay in this browser and go only to your local server, then to Anthropic through your Claude Code session.</li>
+    </ul></section>`);
+}
+function viewCredits() {
+  return shell('credits', `
+    <header style="display:flex;flex-direction:column;gap:6px"><h1>Acknowledgements</h1>
+      <p class="muted" style="margin:0">The people behind Hiring Panel.</p></header>
+    <section class="card credit" style="--ag:#F2C66D">
+      <span class="agent-label">Panel design</span>
+      <h2>Alex Chen</h2>
+      <p class="muted" style="margin:0;line-height:1.6">The seven-reviewer panel comes from Alex Chen's <a href="https://github.com/alexyc9381/hiring-panel-skill" target="_blank" rel="noopener">hiring-panel skill</a> for Claude Code: an automated screen, a hiring manager and five readers who each judge your resume alone, followed by a rebuild with every mistake fixed. Hiring Panel turns that skill into a dashboard. It's used under the MIT license.</p>
+      <span style="display:flex;flex-wrap:wrap;gap:8px"><a class="btn sm" href="https://github.com/alexyc9381/hiring-panel-skill" target="_blank" rel="noopener">hiring-panel skill</a><a class="btn sm" href="https://chen.media" target="_blank" rel="noopener">chen.media</a></span>
+    </section>
+    <section class="card credit" style="--ag:#8AB4FF">
+      <span class="agent-label">Dashboard</span>
+      <h2>Riya Zingade</h2>
+      <p class="muted" style="margin:0;line-height:1.6">Riya, a computer science student at Cal Poly San Luis Obispo, built the Hiring Panel dashboard: the interface, the editor, and running the panel locally through Claude Code so it's free to use.</p>
+      <span style="display:flex;flex-wrap:wrap;gap:8px"><a class="btn sm" href="https://github.com/riyazingade" target="_blank" rel="noopener">GitHub</a><a class="btn sm" href="https://www.linkedin.com/in/riya-zingade/" target="_blank" rel="noopener">LinkedIn</a><a class="btn sm" href="https://personalwebsite-riya-zingade.vercel.app/" target="_blank" rel="noopener">Website</a><a class="btn sm" href="${REPO_URL}" target="_blank" rel="noopener">Source code</a></span>
+    </section>
+    <p class="muted" style="margin:0;font-size:12px">Reviewers run on <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a> by Anthropic.</p>`);
 }
 
 // ---------- render ----------
@@ -883,13 +989,15 @@ function render() {
   else if (r.name === 'editor') html = viewEditor(r);
   else if (r.name === 'library') html = viewLibrary();
   else if (r.name === 'agents') html = viewAgents();
+  else if (r.name === 'setup') html = viewSetup();
+  else if (r.name === 'credits') html = viewCredits();
   if (html) $app.innerHTML = html;
   if (r.name === 'editor') markPages();
   if (focusKey) {
     const el = $app.querySelector(`[data-input="${focusKey}"]`);
     if (el) { el.focus(); try { el.setSelectionRange(selStart, selEnd); } catch (e) { /* not a text field */ } }
   }
-  document.title = { apps: 'Applications', new: 'New application', results: 'Panel results', editor: 'Resume editor', library: 'Resume library', agents: 'Panel agents' }[r.name] + ' · Hiring Panel Studio';
+  document.title = { apps: 'Applications', new: 'New application', results: 'Panel results', editor: 'Resume editor', library: 'Resume library', agents: 'Panel agents', setup: 'Setup', credits: 'Acknowledgements' }[r.name] + ' · Hiring Panel';
 }
 
 // ---------- events ----------
@@ -916,8 +1024,6 @@ $app.addEventListener('change', (e) => {
   if (e.target.dataset.check && ui.form) ui.form[e.target.dataset.check] = e.target.checked;
   if (e.target.matches('[data-file]') && e.target.files[0]) readFile(e.target.files[0]).catch((err) => toast('Could not read that file: ' + err.message));
 });
-// Remember whether Setup is expanded across re-renders.
-$app.addEventListener('toggle', (e) => { if (e.target.matches('[data-setup]')) ui.setupOpen = e.target.open; }, true);
 $app.addEventListener('dragover', (e) => { const z = e.target.closest('[data-drop]'); if (z) { e.preventDefault(); z.classList.add('over'); } });
 $app.addEventListener('dragleave', (e) => { const z = e.target.closest('[data-drop]'); if (z) z.classList.remove('over'); });
 $app.addEventListener('drop', (e) => {
@@ -1076,6 +1182,9 @@ $app.addEventListener('click', async (e) => {
       render();
       break;
     case 'connect': openConnector(); break;
+    case 'copy-cmd':
+      try { await navigator.clipboard.writeText(el.dataset.cmd); toast('Copied. Paste it into Terminal.'); } catch (err) { toast('Copy failed. Select the command and copy it by hand.'); }
+      break;
     case 'save-library': {
       const name = `${slug(app.company)}_v${app.versions.length + (latest(app) && app.draft !== latest(app).resume ? 1 : 0) || 1}.tex`;
       const s = latest(app) ? score(latest(app)) : null;

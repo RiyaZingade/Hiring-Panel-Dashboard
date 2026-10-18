@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Panel Studio connector</title>
+  <title>Hiring Panel connector</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0B0C0E; color: #E8E9EC; font: 14px/1.5 -apple-system, system-ui, sans-serif; }
@@ -33,13 +33,13 @@
     };
 
     if (!opener) {
-      show('Open this from Panel Studio', `This window connects ${HOSTED} to the server on this computer. Open Panel Studio and click Connect.`, 'bad');
+      show('Open this from Hiring Panel', `This window connects ${HOSTED} to the server on this computer. Open Hiring Panel and click Connect.`, 'bad');
     } else {
-      show('Connected', 'Keep this window open while you use Panel Studio. You can minimize it.', 'ok');
+      show('Connected', 'Keep this window open while you use Hiring Panel. You can minimize it.', 'ok');
       const hello = () => { try { opener.postMessage({ type: 'hps-bridge-ready' }, HOSTED); } catch (e) { /* opener navigated elsewhere */ } };
       hello();
       const timer = setInterval(() => {
-        if (opener.closed) { clearInterval(timer); show('Panel Studio was closed', 'You can close this window.', 'bad'); } else hello();
+        if (opener.closed) { clearInterval(timer); show('Hiring Panel was closed', 'You can close this window.', 'bad'); } else hello();
       }, 2000);
 
       window.addEventListener('message', async (e) => {
