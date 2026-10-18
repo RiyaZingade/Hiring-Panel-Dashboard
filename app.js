@@ -61,7 +61,12 @@ const I = {
   bolt: 'M13 2 3 14h9l-1 8 10-12h-9z',
   upload: 'M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3',
   note: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-  trash: 'M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14'
+  trash: 'M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14',
+  home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+  library: 'M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20',
+  botface: 'M12 3v3M7 6h10a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3zM9 11.5v1.5M15 11.5v1.5M9.5 16h5M1.5 12v3M22.5 12v3',
+  heart: 'M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z',
+  gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z'
 };
 const icon = (key, size = 16, extra = '') =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}><path d="${I[key] || key}"></path></svg>`;
@@ -411,30 +416,51 @@ function blankForm() {
 }
 
 // ---------- shell ----------
+// Page frame: a slim top bar (brand, connection, Setup). Navigation lives
+// in the dock at the bottom, which persists across renders so it can animate.
 function shell(active, content) {
-  const base = db.library[db.library.length - 1];
-  const link = (id, href, label, extra = '') => `<a href="${href}" class="${active === id ? 'on' : ''}">${label}${extra}</a>`;
   return `<div class="shell">
-    <nav class="nav" aria-label="Main">
-      <div class="brand">${LOGO}<span>Hiring Panel</span></div>
-      ${connBadge()}
-      <div class="navlinks">
-        ${link('apps', '#/', 'Applications', `<span class="count">${db.apps.length}</span>`)}
-        ${link('new', '#/new', 'New application')}
-        ${link('library', '#/library', 'Resume library', `<span class="count">${db.library.length}</span>`)}
-        ${link('agents', '#/agents', 'Panel agents')}
-        <span class="navsep" role="separator"></span>
-        ${link('setup', '#/setup', 'Setup', conn.state === 'offline' ? '<span class="navdot" title="Not connected"></span>' : '')}
-        ${link('credits', '#/credits', 'Acknowledgements')}
-      </div>
-      <div class="basecard">
-        <span style="font-size:12px" class="muted">Base resume</span>
-        ${base ? `<span class="mono" style="font-size:13px">${esc(base.name)}</span><span style="font-size:12px" class="muted">Saved ${esc(ago(base.savedAt))}</span>`
-               : `<span style="font-size:13px">None saved yet</span><a href="#/library" style="font-size:12px">Add one to the library</a>`}
-      </div>
-    </nav>
+    <header class="topbar">
+      <a class="brand" href="#/">${LOGO}<span>Hiring Panel</span></a>
+      <span class="topbar-right">${connBadge()}
+        <a class="btn sm ${active === 'setup' ? 'on' : ''}" href="#/setup">${icon('gear', 14)}Setup${conn.state === 'offline' ? '<span class="navdot" title="Not connected"></span>' : ''}</a></span>
+    </header>
     <main class="main">${content}</main>
   </div>`;
+}
+
+// ---------- dock (bottom navigation) ----------
+const DOCK = [
+  { key: 'apps', href: '#/', label: 'Applications', icon: 'home' },
+  { key: 'library', href: '#/library', label: 'Resume library', icon: 'library' },
+  { key: 'new', href: '#/new', label: 'New application', icon: 'plus', plus: true },
+  { key: 'agents', href: '#/agents', label: 'Panel agents', icon: 'botface' },
+  { key: 'credits', href: '#/credits', label: 'Acknowledgements', icon: 'heart' }
+];
+const $dock = document.getElementById('dock');
+$dock.innerHTML = `<span class="dock-ind" aria-hidden="true"></span>${DOCK.map((d) => `<a href="${d.href}" data-k="${d.key}" class="${d.plus ? 'dock-plus' : 'dock-item'}" aria-label="${d.label}">
+  ${d.plus ? `<span class="plus-circle">${icon('plus', 22)}</span>` : icon(d.icon, 21)}<span class="dock-tip">${d.label}</span></a>`).join('')}`;
+function updateDock(r) {
+  const key = { apps: 'apps', results: 'apps', suggest: 'apps', interview: 'apps', library: 'library', new: 'new', agents: 'agents', credits: 'credits' }[r.name];
+  $dock.hidden = r.name === 'editor';
+  $dock.querySelectorAll('a').forEach((a) => {
+    const on = a.dataset.k === key;
+    a.classList.toggle('on', on);
+    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+  // The center button turns into × on New application and closes back home.
+  const plus = $dock.querySelector('.dock-plus');
+  plus.href = key === 'new' ? '#/' : '#/new';
+  plus.setAttribute('aria-label', key === 'new' ? 'Close new application' : 'New application');
+  plus.querySelector('.dock-tip').textContent = key === 'new' ? 'Close' : 'New application';
+  const ind = $dock.querySelector('.dock-ind');
+  const target = $dock.querySelector(`.dock-item[data-k="${key}"]`);
+  if (target) {
+    ind.style.transform = `translateX(${target.offsetLeft}px)`;
+    ind.style.width = target.offsetWidth + 'px';
+    ind.style.opacity = '1';
+  } else ind.style.opacity = '0';
+  requestAnimationFrame(() => $dock.classList.add('ready'));
 }
 
 // ---------- view: applications ----------
@@ -1143,6 +1169,7 @@ function render() {
   else if (r.name === 'setup') html = viewSetup();
   else if (r.name === 'credits') html = viewCredits();
   if (html) $app.innerHTML = html;
+  updateDock(r);
   if (r.name === 'editor') markPages();
   if (focusKey) {
     const el = $app.querySelector(`[data-input="${focusKey}"]`);
