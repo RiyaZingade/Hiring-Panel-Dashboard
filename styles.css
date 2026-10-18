@@ -393,3 +393,12 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border-radius
 .sug-type { flex: none; min-width: 92px; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ag); padding-top: 2px; }
 .sug-body { display: flex; flex-direction: column; gap: 3px; line-height: 1.5; color: var(--text-2); font-size: 13.5px; }
 .sug-body svg { vertical-align: -1px; }
+
+/* Results page: Suggestions and Interview prep buttons beside Fix first */
+@media (min-width: 1100px) { .verdicts { grid-template-columns: 1.15fr 1fr 1.3fr minmax(220px, 0.85fr); } }
+.vside { display: flex; flex-direction: column; gap: 12px; }
+.vbtn { flex: 1; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 14px 16px; border-radius: 14px; color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--ag) 35%, var(--line)); background: color-mix(in srgb, var(--ag) 9%, var(--panel)); transition: background .15s, border-color .15s, transform .15s; }
+.vbtn:hover { color: var(--text); background: color-mix(in srgb, var(--ag) 16%, var(--panel)); border-color: color-mix(in srgb, var(--ag) 60%, transparent); }
+.vbtn:hover svg:last-child { transform: translateX(2px); }
+.vbtn .ricon { --ag: inherit; }

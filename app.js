@@ -311,7 +311,7 @@ function startVersion(app, resume) {
 }
 function refreshIfShowing(appId) {
   const r = route();
-  if (r.name === 'apps' || (r.id === appId && r.name === 'results')) render();
+  if (r.name === 'apps' || (r.id === appId && ['results', 'suggest', 'interview'].includes(r.name))) render();
 }
 async function runReview(appId, n, agentId) {
   const key = `${appId}:${n}:${agentId}`;
@@ -383,6 +383,8 @@ function route() {
   if (parts[0] === 'credits') return { name: 'credits' };
   if (parts[0] === 'app' && parts[1]) {
     if (parts[2] === 'edit') return { name: 'editor', id: parts[1] };
+    if (parts[2] === 'suggestions') return { name: 'suggest', id: parts[1] };
+    if (parts[2] === 'interview') return { name: 'interview', id: parts[1] };
     return { name: 'results', id: parts[1], v: parts[2] ? Number(parts[2].replace('v', '')) : null };
   }
   return { name: 'apps' };
@@ -697,6 +699,7 @@ function viewResults(r) {
         <span class="mono" style="font-size:12px;color:var(--good)">${esc(h.sub)} · target ${app.settings.target}</span></span></div>
       <div class="vcard"><span class="muted" style="font-size:12px">Tally · ${done.length} of ${total} in</span><div style="display:flex;flex-wrap:wrap;gap:8px">${tallies}</div></div>
       <div class="vcard" style="justify-content:flex-start"><span class="muted" style="font-size:12px">Fix first</span>${fixFirst}</div>
+      <div class="vside">${toolButton(app, 'suggest')}${toolButton(app, 'interview')}</div>
     </section>
     <section aria-label="Reviewer results" style="overflow-x:auto">
       <div class="rtable" role="table">
@@ -704,8 +707,6 @@ function viewResults(r) {
         ${rows}
       </div>
     </section>
-    ${suggestCard(app)}
-    ${interviewCard(app)}
     <div class="legend">${[['wording', 'Weak wording'], ['missing', 'Missing'], ['metric', 'Needs a number'], ['keyword', 'Keywords'], ['shipped', 'Shipped work'], ['question', 'Open question']].map(([k, l]) => `<span>${icon(k, 13)}${l}</span>`).join('')}</div>
     ${details}
   </div></div>`;
@@ -786,6 +787,33 @@ function suggestCard(app) {
     ${d.say_it?.length ? `<div class="rsec"><span class="rlabel">Already have it? Say so</span><ul class="list">${d.say_it.map((q) => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}
     <span class="muted" style="font-size:12px">Generated ${esc(ago(sg.at))}${stale}. Only add something to your resume once you've actually done it.</span>
   </section>`;
+}
+
+// Buttons on the results page that open the Suggestions and Interview prep pages.
+function toolButton(app, kind) {
+  const t = kind === 'suggest'
+    ? { ...ADVISOR, label: 'Suggestions', key: 'suggestions', path: 'suggestions', count: (d) => `${d.gaps?.length || 0} gap${d.gaps?.length === 1 ? '' : 's'} to close` }
+    : { ...COACH, label: 'Interview prep', key: 'interview', path: 'interview', count: (d) => `${(d.technical?.length || 0) + (d.resume?.length || 0) + (d.behavioral?.length || 0)} questions` };
+  const st = app[t.key] || { status: 'idle' };
+  const sub = st.status === 'done' ? t.count(st.data) : st.status === 'run' ? '<span class="spin"></span> Running…' : st.status === 'error' ? 'Failed · open to retry' : 'Not generated yet';
+  return `<a class="vbtn" href="#/app/${app.id}/${t.path}" style="--ag:${t.color}">
+    <span class="ricon">${icon(t.icon, 16)}</span>
+    <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600;color:var(--text)">${t.label}</span><span class="muted" style="font-size:12px">${sub}</span></span>
+    ${icon('arrow', 16, 'style="margin-left:auto;color:var(--ag)"')}</a>`;
+}
+function viewExtra(r, kind) {
+  const app = findApp(r.id);
+  if (!app) return shell('apps', `<div class="empty">That application no longer exists. <a href="#/">Back to applications</a></div>`);
+  const other = kind === 'suggest' ? ['interview', 'Interview prep'] : ['suggestions', 'Suggestions'];
+  return `<div class="page"><div class="wrap">
+    <header class="crumbs">
+      <a class="back" href="#/app/${app.id}">${icon('back')}Panel results</a><span class="slash">/</span>
+      <div style="display:flex;flex-direction:column;gap:2px"><h1 class="sm">${kind === 'suggest' ? 'Suggestions' : 'Interview prep'}</h1>
+        <span class="muted" style="font-size:13px">${esc(app.company)} · ${esc(app.role)}</span></div>
+      <a class="btn" href="#/app/${app.id}/${other[0]}" style="margin-left:auto">${other[1]}${icon('arrow')}</a>
+    </header>
+    ${kind === 'suggest' ? suggestCard(app) : interviewCard(app)}
+  </div></div>`;
 }
 
 // ---------- LaTeX preview ----------
@@ -989,13 +1017,13 @@ function viewAgents() {
       <article class="agent-card synth" style="--ag:${COACH.color}">
         <div class="agent-card-head"><span class="ricon">${icon(COACH.icon, 18)}</span>
           <span style="display:flex;flex-direction:column;gap:2px"><span class="mono faint" style="font-size:11px">On demand</span><h2>${COACH.name}</h2></span></div>
-        <p class="agent-about">Prepares you for the interview itself. Reads the job posting, including anything it says about the interview process, and your resume. Runs only when you click Generate on a results page.</p>
+        <p class="agent-about">Prepares you for the interview itself. Reads the job posting, including anything it says about the interview process, and your resume. Open it with the Interview prep button on any results page.</p>
         <div class="agent-sec"><span class="agent-label">Gives you</span><ul class="list"><li>The interview stages, if the posting lists them (it never invents a process)</li><li>The topics the interview will likely focus on</li><li>Technical, resume and behavioral questions, each with why they'd ask it and how to prepare</li><li>Good questions to ask the interviewer</li></ul></div>
       </article>
       <article class="agent-card synth" style="--ag:${ADVISOR.color}">
         <div class="agent-card-head"><span class="ricon">${icon(ADVISOR.icon, 18)}</span>
           <span style="display:flex;flex-direction:column;gap:2px"><span class="mono faint" style="font-size:11px">On demand</span><h2>${ADVISOR.name}</h2></span></div>
-        <p class="agent-about">Finds the requirements in this posting that your resume doesn't show yet, and suggests how to close each gap. Runs only when you click Find gaps on a results page.</p>
+        <p class="agent-about">Finds the requirements in this posting that your resume doesn't show yet, and suggests how to close each gap. Open it with the Suggestions button on any results page.</p>
         <div class="agent-sec"><span class="agent-label">Gives you</span><ul class="list"><li>Each missing or weak requirement, marked required or preferred</li><li>Personal projects, clubs, classes, certifications or courses to close it, with rough time and how it would read on your resume</li><li>Things you may already have done but haven't said</li></ul></div>
       </article>
     </div>
@@ -1084,6 +1112,7 @@ function render() {
   if (r.name === 'apps') html = viewApps();
   else if (r.name === 'new') html = viewNew();
   else if (r.name === 'results') html = viewResults(r);
+  else if (r.name === 'suggest' || r.name === 'interview') html = viewExtra(r, r.name);
   else if (r.name === 'editor') html = viewEditor(r);
   else if (r.name === 'library') html = viewLibrary();
   else if (r.name === 'agents') html = viewAgents();
@@ -1095,7 +1124,7 @@ function render() {
     const el = $app.querySelector(`[data-input="${focusKey}"]`);
     if (el) { el.focus(); try { el.setSelectionRange(selStart, selEnd); } catch (e) { /* not a text field */ } }
   }
-  document.title = { apps: 'Applications', new: 'New application', results: 'Panel results', editor: 'Resume editor', library: 'Resume library', agents: 'Panel agents', setup: 'Setup', credits: 'Acknowledgements' }[r.name] + ' · Hiring Panel';
+  document.title = { apps: 'Applications', new: 'New application', results: 'Panel results', suggest: 'Suggestions', interview: 'Interview prep', editor: 'Resume editor', library: 'Resume library', agents: 'Panel agents', setup: 'Setup', credits: 'Acknowledgements' }[r.name] + ' · Hiring Panel';
 }
 
 // ---------- events ----------
