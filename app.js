@@ -164,11 +164,11 @@ function isRunning(v) {
 function appStatus(app) {
   const v = latest(app);
   if (!v) return { label: 'Draft', c: '#5C5F68' };
-  if (isRunning(v)) return { label: 'Panel running', c: 'var(--warn)' };
+  if (isRunning(v)) return { label: 'Panel running', c: 'var(--c-blue)' };
   const s = score(v);
   if (s != null && s >= (app.settings.target ?? 85)) return { label: 'Ready to apply', c: 'var(--good)' };
-  if (app.versions.length > 1) return { label: 'Iterating', c: 'var(--text-2)' };
-  return { label: 'Needs review', c: 'var(--accent)' };
+  if (app.versions.length > 1) return { label: 'Iterating', c: 'var(--c-violet)' };
+  return { label: 'Needs review', c: 'var(--warn)' };
 }
 function headline(app, v) {
   const done = doneReviews(v);
@@ -523,7 +523,7 @@ function viewApps() {
       let c = 'var(--line-3)';
       if (r?.status === 'run') c = 'var(--warn)';
       else if (r?.status === 'error') c = 'var(--bad)';
-      else if (r?.status === 'done') c = ['NO', 'REJECT'].includes(r.data.verdict) || (g.id !== 'ats' && r.data.verdict === 'PASS') ? 'var(--bad)' : 'var(--accent)';
+      else if (r?.status === 'done') c = ['NO', 'REJECT'].includes(r.data.verdict) || (g.id !== 'ats' && r.data.verdict === 'PASS') ? 'var(--bad)' : r.data.verdict === 'MAYBE' ? 'var(--warn)' : 'var(--good)';
       return `<span style="background:${c}" title="${esc(g.name)}"></span>`;
     }).join('');
     const finished = v ? Object.values(v.reviews).filter((r) => r.status === 'done').length : 0;
