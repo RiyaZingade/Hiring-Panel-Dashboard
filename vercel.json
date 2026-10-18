@@ -1,7 +1,16 @@
 {
   "functions": {
-    "api/review.js": { "maxDuration": 120 },
-    "api/synthesize.js": { "maxDuration": 180 },
-    "api/rewrite.js": { "maxDuration": 180 }
+    "api/review.js": {
+      "maxDuration": 120
+    },
+    "api/synthesize.js": {
+      "maxDuration": 180
+    },
+    "api/rewrite.js": {
+      "maxDuration": 180
+    },
+    "api/interview.js": {
+      "maxDuration": 120
+    }
   }
 }

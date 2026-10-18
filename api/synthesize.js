@@ -61,7 +61,7 @@ const tool = {
 export default function handler(req, res) {
   return handle(req, res, async ({ resume, posting, company, role, reviews, onePage, autoRevise }) => {
     const notes = (reviews || [])
-      .map((r) => `## ${r.name}: ${r.verdict}${r.note ? ` (${r.note})` : ''}\nHurt most: "${r.hurt_most?.quote}" — ${r.hurt_most?.why}\n${r.full}`)
+      .map((r) => `## ${r.name}: ${r.verdict}${r.note ? ` (${r.note})` : ''}\nHurt most: "${r.hurt_most?.quote}" — ${r.hurt_most?.why}\n${(r.key_points || []).map((k) => `- ${k}`).join('\n') || r.full || ''}`)
       .join('\n\n');
     return callTool({
       system: `You run a hiring panel. Merge the reviewers' notes into one ranked list of mistakes, then write concrete edits that fix them using only facts already in the resume. Where a fix needs a fact you do not have, leave a placeholder. ${HONESTY}${onePage ? ' The resume must stay on one page: prefer cutting and tightening over adding.' : ''}`,

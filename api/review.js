@@ -67,9 +67,15 @@ function reviewTool(agentId, agent) {
         required: ['kind', 'label', 'detail']
       }
     },
-    full: { type: 'string', description: 'Your full read in under 120 words, plain prose, no markdown.' }
+    key_points: {
+      type: 'array',
+      minItems: 2,
+      maxItems: 5,
+      description: 'Your read as 2 to 5 short bullet points, most important first. Each at most 20 words, plain text, no markdown. Cover what works as well as what does not.',
+      items: { type: 'string' }
+    }
   };
-  const required = ['verdict', 'note', 'hurt_most', 'problems', 'full'];
+  const required = ['verdict', 'note', 'hurt_most', 'problems', 'key_points'];
   if (agentId === 'manager') {
     properties.interview_questions = { type: 'array', maxItems: 3, items: { type: 'string' } };
     required.push('interview_questions');

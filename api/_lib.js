@@ -94,5 +94,6 @@ export async function handle(req, res, work) {
 export const HONESTY = [
   'Never invent employers, titles, dates, numbers, skills or results that are not in the resume or the notes the candidate gave.',
   'Quote resume lines exactly when you cite them.',
-  'Be honest and unflattering; do not praise to be kind.'
+  'Be honest and unflattering; do not praise to be kind.',
+  "Refer to the candidate as \"the candidate\" or \"they\"; never guess anyone's pronouns from a name."
 ].join(' ');

@@ -368,6 +368,7 @@ for (const app of db.apps) {
     for (const [id, r] of Object.entries(v.reviews || {})) if (r.status === 'run') v.reviews[id] = { status: 'error', error: 'Interrupted by a page reload. Retry it.' };
     if (v.synth?.status === 'run') v.synth = { status: 'error', error: 'Interrupted by a page reload. Retry it.' };
   }
+  if (app.interview?.status === 'run') app.interview = { status: 'error', error: 'Interrupted by a page reload. Try again.' };
 }
 save();
 
@@ -634,12 +635,17 @@ function viewResults(r) {
       verdictCell = `<span class="pill" style="background:${t.bg};color:${t.c}">${icon(t.icon, 14)}${esc(verdictLabel(id, d.verdict))}</span>${d.note ? `<span class="muted" style="font-size:12px">${esc(d.note)}</span>` : ''}`;
       const hot = topNames.some((n) => n.toLowerCase().includes(g.name.toLowerCase()) || g.name.toLowerCase().includes(n.toLowerCase()));
       hurtCell = (d.problems || []).map((p, j) => `<span class="chip ${hot && j === 0 ? 'hot' : ''}">${icon(p.kind, 13)}${esc(p.label)}</span>`).join('');
-      full = `<p style="margin:0"><span class="muted">Hurt most:</span> <q>${esc(d.hurt_most?.quote)}</q> — ${esc(d.hurt_most?.why)}</p>
-        <p style="margin:0">${esc(d.full)}</p>
-        ${(d.problems || []).length ? `<ul class="list">${d.problems.map((p) => `<li><b>${esc(p.label)}.</b> ${esc(p.detail)}</li>`).join('')}</ul>` : ''}
-        ${d.interview_questions?.length ? `<p style="margin:0" class="muted">Would ask:</p><ol class="list">${d.interview_questions.map((q) => `<li>${esc(q)}</li>`).join('')}</ol>` : ''}
-        ${d.missing_terms?.length ? `<p style="margin:0"><span class="muted">Missing terms:</span> ${esc(d.missing_terms.join(', '))}</p>` : ''}
-        ${d.matched_terms?.length ? `<p style="margin:0"><span class="muted">Matched terms:</span> ${esc(d.matched_terms.join(', '))}</p>` : ''}`;
+      // Older results have one prose note (`full`); split it into sentences.
+      const points = d.key_points?.length ? d.key_points : String(d.full || '').split(/(?<=[.!?])\s+(?=[A-Z"(])/).filter(Boolean);
+      const sec = (label, body) => `<div class="rsec"><span class="rlabel">${label}</span>${body}</div>`;
+      full = `<div class="rnote" style="--ag:${g.color}">
+        ${d.hurt_most?.quote ? sec('Hurt most', `<q>${esc(d.hurt_most.quote)}</q><span class="muted">${esc(d.hurt_most.why)}</span>`) : ''}
+        ${points.length ? sec('Key points', `<ul class="list">${points.map((k) => `<li>${esc(k)}</li>`).join('')}</ul>`) : ''}
+        ${(d.problems || []).length ? sec('Problems', `<ul class="list">${d.problems.map((p) => `<li><b>${esc(p.label)}.</b> ${esc(p.detail)}</li>`).join('')}</ul>`) : ''}
+        ${d.interview_questions?.length ? sec('Would ask in the interview', `<ol class="list">${d.interview_questions.map((q) => `<li>${esc(q)}</li>`).join('')}</ol>`) : ''}
+        ${d.missing_terms?.length ? sec('Missing keywords', `<span class="terms">${d.missing_terms.map((t) => `<span class="term miss">${esc(t)}</span>`).join('')}</span>`) : ''}
+        ${d.matched_terms?.length ? sec('Matched keywords', `<span class="terms">${d.matched_terms.map((t) => `<span class="term hit">${esc(t)}</span>`).join('')}</span>`) : ''}
+      </div>`;
     } else {
       verdictCell = '<span class="muted">—</span>';
       hurtCell = '';
@@ -697,9 +703,54 @@ function viewResults(r) {
         ${rows}
       </div>
     </section>
+    ${interviewCard(app)}
     <div class="legend">${[['wording', 'Weak wording'], ['missing', 'Missing'], ['metric', 'Needs a number'], ['keyword', 'Keywords'], ['shipped', 'Shipped work'], ['question', 'Open question']].map(([k, l]) => `<span>${icon(k, 13)}${l}</span>`).join('')}</div>
     ${details}
   </div></div>`;
+}
+
+// ---------- interview prep ----------
+const COACH = { name: 'Interview coach', color: '#7DD3FC', icon: 'interview' };
+function interviewCard(app) {
+  const iv = app.interview || { status: 'idle' };
+  const head = (extra) => `<div class="card-head"><span class="ricon" style="--ag:${COACH.color}">${icon(COACH.icon, 16)}</span><h2>Interview prep</h2>
+    <span class="muted" style="font-size:12px">Questions this team is likely to ask, from the posting and your resume</span>${extra}</div>`;
+  if (iv.status === 'run') return `<section class="card interview">${head('')}<span class="muted"><span class="spin"></span> The interview coach is reading the posting…</span></section>`;
+  if (iv.status !== 'done') {
+    return `<section class="card interview">${head('')}
+      ${iv.status === 'error' ? `<span class="err">${esc(iv.error)}</span>` : '<p class="muted" style="margin:0;line-height:1.6">One more agent reads the job posting, including anything it says about the interview process, plus your resume, and writes technical, resume and behavioral questions with how to prepare for each. It runs only when you ask, as one Claude call.</p>'}
+      <span><button type="button" class="btn primary" data-action="run-interview">${icon(COACH.icon)}${iv.status === 'error' ? 'Try again' : 'Generate interview questions'}</button></span></section>`;
+  }
+  const d = iv.data;
+  const group = (label, items) => items?.length ? `<div class="iv-group"><h3>${label}</h3><ol class="iv-list">${items.map((x) => `<li>
+      <span class="iv-q">${esc(x.q)}</span>
+      <ul class="list iv-meta"><li><span class="muted">Why they'd ask:</span> ${esc(x.why)}</li><li><span class="muted">Prepare:</span> ${esc(x.prep)}</li></ul></li>`).join('')}</ol></div>` : '';
+  const stale = latest(app) && iv.versionN !== latest(app).n ? ` · made for v${iv.versionN}` : '';
+  return `<section class="card interview">${head(`<button type="button" class="btn sm" data-action="run-interview" style="margin-left:auto">${icon('rerun', 14)}Regenerate</button>`)}
+    <div class="iv-top">
+      <div class="rsec"><span class="rlabel">Interview process</span>${d.process?.stated && d.process.stages?.length
+        ? `<span class="terms">${d.process.stages.map((st, i) => `<span class="term stage"><b>${i + 1}</b> ${esc(st)}</span>`).join('')}</span>`
+        : `<span class="muted" style="font-size:13px">The posting doesn't describe the interview process, so these questions come from the role's requirements.</span>`}
+        ${d.process?.notes?.length ? `<ul class="list" style="font-size:13px">${d.process.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}</div>
+      ${d.focus?.length ? `<div class="rsec"><span class="rlabel">Likely focus</span><span class="terms">${d.focus.map((f) => `<span class="term">${esc(f)}</span>`).join('')}</span></div>` : ''}
+    </div>
+    <div class="iv-groups">${group('Technical', d.technical)}${group('About your resume', d.resume)}${group('Behavioral', d.behavioral)}</div>
+    ${d.ask_them?.length ? `<div class="rsec"><span class="rlabel">Questions to ask them</span><ul class="list">${d.ask_them.map((q) => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}
+    <span class="muted" style="font-size:12px">Generated ${esc(ago(iv.at))}${stale}. Prepare from what's really on your resume; never claim experience you don't have.</span>
+  </section>`;
+}
+async function runInterview(appId) {
+  const app = findApp(appId);
+  const v = latest(app);
+  app.interview = { status: 'run' };
+  save(); refreshIfShowing(appId);
+  try {
+    const data = await api('interview', { resume: v ? v.resume : app.draft, posting: app.posting, company: app.company, role: app.role });
+    app.interview = { status: 'done', data, at: Date.now(), versionN: v?.n };
+  } catch (err) {
+    app.interview = { status: 'error', error: err.message };
+  }
+  save(); refreshIfShowing(appId);
 }
 
 // ---------- LaTeX preview ----------
@@ -900,8 +951,14 @@ function viewAgents() {
         <p class="agent-about">Reads all seven verdicts together, merges duplicates and ranks what's wrong, worst first.</p>
         <div class="agent-sec"><span class="agent-label">Gives you</span><ul class="list"><li>A summary and the ranked list of fixes, with who flagged each one</li><li>Suggested edits you can accept one by one in the editor</li><li>A rebuilt resume, with [ADD: …] placeholders for facts only you know</li><li>Questions to answer before you send it</li></ul></div>
       </article>
+      <article class="agent-card synth" style="--ag:${COACH.color}">
+        <div class="agent-card-head"><span class="ricon">${icon(COACH.icon, 18)}</span>
+          <span style="display:flex;flex-direction:column;gap:2px"><span class="mono faint" style="font-size:11px">On demand</span><h2>${COACH.name}</h2></span></div>
+        <p class="agent-about">Prepares you for the interview itself. Reads the job posting, including anything it says about the interview process, and your resume. Runs only when you click Generate on a results page.</p>
+        <div class="agent-sec"><span class="agent-label">Gives you</span><ul class="list"><li>The interview stages, if the posting lists them (it never invents a process)</li><li>The topics the interview will likely focus on</li><li>Technical, resume and behavioral questions, each with why they'd ask it and how to prepare</li><li>Good questions to ask the interviewer</li></ul></div>
+      </article>
     </div>
-    <section class="card"><h2>What every reviewer returns</h2><p class="muted" style="margin:0;line-height:1.6">A verdict, the single line that hurt most (quoted exactly), up to three problems tagged as weak wording, missing, needs a number, keywords, shipped work or open question, and a full note under 120 words.</p></section>
+    <section class="card"><h2>What every reviewer returns</h2><p class="muted" style="margin:0;line-height:1.6">A verdict, the single line that hurt most (quoted exactly), up to three problems tagged as weak wording, missing, needs a number, keywords, shipped work or open question, and 2 to 5 key points.</p></section>
     <section class="card"><h2>Verdicts and score</h2><p class="muted" style="margin:0;line-height:1.6">The score averages every verdict: positive verdicts (PASS, INTERVIEW, HIRE) count 100, MAYBE 55, NO HIRE 10, REJECT and NO 0. Reviewers are told never to invent facts. This is a second opinion from language models, not a guarantee of an interview.</p></section>`);
 }
 
@@ -950,7 +1007,7 @@ function viewSetup() {
       <p class="muted" style="margin:0">Press <kbd>Ctrl+C</kbd> in the Terminal window, or close it.</p>
     </section>
     <section class="card note"><h2>Good to know</h2><ul class="list">
-      <li><b>Usage:</b> one full panel is about 9 Claude calls, all on your own plan. On the Pro plan, several panels in a row can hit your usage limit, so space them out or turn off reviewers you don't need.</li>
+      <li><b>Usage:</b> one full panel is about 9 Claude calls, all on your own plan, plus one more if you generate interview questions. On the Pro plan, several panels in a row can hit your usage limit, so space them out or turn off reviewers you don't need.</li>
       <li><b>Exact PDFs:</b> install a LaTeX engine (<code class="inline">brew install tectonic</code>) and Download PDF compiles your real LaTeX. Without one, it prints the approximate preview.</li>
       <li><b>"Port 3000 is already in use":</b> the server is already running in another Terminal window. Use that one.</li>
       <li><b>"claude: command not found":</b> install Claude Code, then open a new Terminal window.</li>
@@ -1182,6 +1239,7 @@ $app.addEventListener('click', async (e) => {
       render();
       break;
     case 'connect': openConnector(); break;
+    case 'run-interview': runInterview(app.id); break;
     case 'copy-cmd':
       try { await navigator.clipboard.writeText(el.dataset.cmd); toast('Copied. Paste it into Terminal.'); } catch (err) { toast('Copy failed. Select the command and copy it by hand.'); }
       break;

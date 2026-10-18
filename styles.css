@@ -349,3 +349,29 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border-radius
 /* Acknowledgements */
 .card.credit { border-left: 3px solid var(--ag); background: linear-gradient(135deg, color-mix(in srgb, var(--ag) 10%, var(--panel)), var(--panel) 65%); gap: 10px; }
 .card.credit h2 { font-size: 20px; }
+
+/* Reviewer notes, as labeled bullet sections */
+.rnote { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px 28px; }
+.rsec { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rsec q { color: var(--text); line-height: 1.5; }
+.rsec .muted { font-size: 13px; line-height: 1.5; }
+.rsec .list { font-size: 13.5px; line-height: 1.5; }
+.rlabel { font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ag, var(--c-blue)); }
+.terms { display: flex; flex-wrap: wrap; gap: 6px; }
+.term { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line-3); background: var(--bg); color: var(--text-2); }
+.term.miss { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 35%, transparent); background: var(--bad-bg); }
+.term.hit { color: var(--good); border-color: color-mix(in srgb, var(--good) 30%, transparent); background: var(--good-bg); }
+.term.stage { color: #BAE6FD; border-color: color-mix(in srgb, #7DD3FC 35%, transparent); background: color-mix(in srgb, #7DD3FC 10%, transparent); }
+.term.stage b { font-family: var(--mono); margin-right: 4px; color: #7DD3FC; }
+
+/* Interview prep */
+.card.interview { --ag: #7DD3FC; border-top: 3px solid var(--ag); background: color-mix(in srgb, var(--ag) 5%, var(--panel)); }
+.card.interview .card-head { align-items: center; }
+.iv-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px 28px; }
+.iv-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.iv-group { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 12px; background: var(--bg); border: 1px solid color-mix(in srgb, var(--ag) 18%, var(--line)); }
+.iv-group h3 { margin: 0; font-size: 13px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ag); }
+.iv-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 12px; }
+.iv-list > li::marker { color: var(--ag); font-family: var(--mono); font-size: 12px; }
+.iv-q { display: block; color: var(--text); font-weight: 500; line-height: 1.45; margin-bottom: 4px; }
+.iv-meta { font-size: 12.5px; gap: 3px; padding-left: 14px; }
