@@ -934,6 +934,30 @@ function printPreview(note) {
   setTimeout(() => window.print(), 300);
 }
 
+// In-app replacement for confirm(): resolves true on the confirm button,
+// false on Cancel, Escape or a click outside.
+function confirmDialog({ title, body, ok = 'Continue', danger = false }) {
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'overlay';
+    wrap.innerHTML = `<div class="dialog confirm" role="alertdialog" aria-modal="true" aria-labelledby="cd-title" aria-describedby="cd-body">
+      <h2 id="cd-title">${esc(title)}</h2>
+      <p id="cd-body">${esc(body)}</p>
+      <div class="confirm-actions"><button class="btn" type="button" data-no>Cancel</button>
+        <button class="btn ${danger ? 'danger-solid' : 'primary'}" type="button" data-yes>${esc(ok)}</button></div>
+    </div>`;
+    const done = (value) => { document.removeEventListener('keydown', onKey); wrap.remove(); resolve(value); };
+    const onKey = (e) => { if (e.key === 'Escape') done(false); };
+    wrap.addEventListener('click', (e) => {
+      if (e.target.closest('[data-yes]')) done(true);
+      else if (e.target === wrap || e.target.closest('[data-no]')) done(false);
+    });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(wrap);
+    wrap.querySelector(danger ? '[data-no]' : '[data-yes]').focus();
+  });
+}
+
 function showDialog(html) {
   const wrap = document.createElement('div');
   wrap.className = 'overlay';
@@ -987,7 +1011,7 @@ $app.addEventListener('click', async (e) => {
       break;
     }
     case 'delete-app':
-      if (confirm(`Delete ${app.company} · ${app.role} and all its versions? This can't be undone.`)) {
+      if (await confirmDialog({ title: `Delete ${app.company} · ${app.role}?`, body: "This deletes the application and all its versions from this browser. It can't be undone.", ok: 'Delete', danger: true })) {
         db.apps = db.apps.filter((a) => a.id !== app.id); save(); go('#/');
       }
       break;
@@ -1001,7 +1025,7 @@ $app.addEventListener('click', async (e) => {
     }
     case 'dismiss-edit': latest(app).edits[el.dataset.i] = 'Dismissed'; save(); render(); break;
     case 'use-rebuilt':
-      if (confirm("Replace the draft with the panel's rebuilt resume? Your current draft edits will be lost.")) {
+      if (await confirmDialog({ title: "Use the panel's rebuilt resume?", body: 'This replaces your current draft, and any edits you made to it will be lost.', ok: 'Replace draft' })) {
         const v = latest(app);
         app.draft = v.synth.data.improved_resume;
         v.synth.data.edits.forEach((_, i) => { v.edits[i] = 'Applied'; });
@@ -1034,7 +1058,7 @@ $app.addEventListener('click', async (e) => {
     }
     case 'rerun': {
       if (!app.draft.trim()) { toast('The resume is empty.'); break; }
-      if (/\\add\{|\[ADD:/.test(app.draft) && !confirm('The draft still has placeholders. Run the panel anyway? Reviewers ignore placeholders, so blanks count against you.')) break;
+      if (/\\add\{|\[ADD:/.test(app.draft) && !(await confirmDialog({ title: 'Run with placeholders left?', body: 'The draft still has [ADD: …] placeholders. Reviewers ignore them, so every blank counts against you. Fill or delete them first for a fair score.', ok: 'Run anyway' }))) break;
       startVersion(app, app.draft);
       go(`#/app/${app.id}`);
       break;
@@ -1063,7 +1087,7 @@ $app.addEventListener('click', async (e) => {
     }
     case 'lib-copy': copyText(db.library.find((x) => x.id === el.dataset.id)?.resume || ''); break;
     case 'lib-del':
-      if (confirm('Delete this saved resume?')) { db.library = db.library.filter((x) => x.id !== el.dataset.id); save(); render(); }
+      if (await confirmDialog({ title: 'Delete this saved resume?', body: "It's removed from your library in this browser. Applications that used it keep their own copy.", ok: 'Delete', danger: true })) { db.library = db.library.filter((x) => x.id !== el.dataset.id); save(); render(); }
       break;
   }
 });
