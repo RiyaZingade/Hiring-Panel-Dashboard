@@ -555,3 +555,12 @@ select.input { appearance: auto; }
 :root[data-theme="light"] .pane-edits .edit.done { border-left-color: var(--good); }
 :root[data-theme="light"] .pane-edits.collapsed .vtoggle:hover { background: #FFF1DD; }
 :root[data-theme="light"] .paper { box-shadow: 0 8px 30px rgba(20,22,30,.12); }
+
+/* Dock icon colors: home green, library red, agents orange, acknowledgements pink */
+:root { --dock-green: #6EE7A0; --dock-red: #F87171; --dock-orange: #E08A62; --dock-pink: #F472B6; }
+:root[data-theme="light"] { --dock-green: #16A34A; --dock-red: #DC2626; --dock-orange: #C8653E; --dock-pink: #DB2777; }
+.dock-item { color: color-mix(in srgb, var(--dc) 80%, transparent); }
+.dock-item:hover, .dock-item.on { color: var(--dc); }
+.dock-item.on { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--dc) 45%, transparent)); }
+:root[data-theme="light"] .dock-item, :root[data-theme="light"] .dock-item.on, :root[data-theme="light"] .dock-item:hover { color: var(--dc); }
+.dock-ind { background: color-mix(in srgb, var(--active-dc, var(--c-blue)) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--active-dc, var(--c-blue)) 40%, transparent); }

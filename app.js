@@ -457,16 +457,22 @@ function shell(active, content) {
 const initials = (name) => (String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')) || '?';
 
 // ---------- dock (bottom navigation) ----------
+// Pixel-art bot for Panel agents, drawn on a 16×10 grid; the eyes are cut out
+// with a mask so the dock background shows through.
+const PIXEL_BOT = `<svg width="24" height="15" viewBox="0 0 16 10" aria-hidden="true" shape-rendering="crispEdges">
+  <defs><mask id="pixel-bot-eyes"><rect width="16" height="10" fill="#fff"/><rect x="4" y="2" width="1" height="2" fill="#000"/><rect x="11" y="2" width="1" height="2" fill="#000"/></mask></defs>
+  <g fill="currentColor" mask="url(#pixel-bot-eyes)"><rect x="2" y="0" width="12" height="8"/><rect x="0" y="4" width="16" height="2"/>
+    <rect x="3" y="8" width="1" height="2"/><rect x="5" y="8" width="1" height="2"/><rect x="10" y="8" width="1" height="2"/><rect x="12" y="8" width="1" height="2"/></g></svg>`;
 const DOCK = [
-  { key: 'apps', href: '#/', label: 'Applications', icon: 'home' },
-  { key: 'library', href: '#/library', label: 'Resume library', icon: 'library' },
+  { key: 'apps', href: '#/', label: 'Applications', icon: 'home', color: 'var(--dock-green)' },
+  { key: 'library', href: '#/library', label: 'Resume library', icon: 'library', color: 'var(--dock-red)' },
   { key: 'new', href: '#/new', label: 'New application', icon: 'plus', plus: true },
-  { key: 'agents', href: '#/agents', label: 'Panel agents', icon: 'botface' },
-  { key: 'credits', href: '#/credits', label: 'Acknowledgements', icon: 'heart' }
+  { key: 'agents', href: '#/agents', label: 'Panel agents', svg: PIXEL_BOT, color: 'var(--dock-orange)' },
+  { key: 'credits', href: '#/credits', label: 'Acknowledgements', icon: 'heart', color: 'var(--dock-pink)' }
 ];
 const $dock = document.getElementById('dock');
-$dock.innerHTML = `<span class="dock-ind" aria-hidden="true"></span>${DOCK.map((d) => `<a href="${d.href}" data-k="${d.key}" class="${d.plus ? 'dock-plus' : 'dock-item'}" aria-label="${d.label}">
-  ${d.plus ? `<span class="plus-circle">${icon('plus', 22)}</span>` : icon(d.icon, 21)}<span class="dock-tip">${d.label}</span></a>`).join('')}`;
+$dock.innerHTML = `<span class="dock-ind" aria-hidden="true"></span>${DOCK.map((d) => `<a href="${d.href}" data-k="${d.key}" class="${d.plus ? 'dock-plus' : 'dock-item'}" aria-label="${d.label}"${d.color ? ` style="--dc:${d.color}"` : ''}>
+  ${d.plus ? `<span class="plus-circle">${icon('plus', 22)}</span>` : d.svg || icon(d.icon, 21)}<span class="dock-tip">${d.label}</span></a>`).join('')}`;
 function updateDock(r) {
   const key = { apps: 'apps', results: 'apps', suggest: 'apps', interview: 'apps', library: 'library', new: 'new', agents: 'agents', credits: 'credits' }[r.name];
   $dock.hidden = r.name === 'editor';
@@ -486,6 +492,7 @@ function updateDock(r) {
     ind.style.transform = `translateX(${target.offsetLeft}px)`;
     ind.style.width = target.offsetWidth + 'px';
     ind.style.opacity = '1';
+    $dock.style.setProperty('--active-dc', target.style.getPropertyValue('--dc'));
   } else ind.style.opacity = '0';
   requestAnimationFrame(() => $dock.classList.add('ready'));
 }
