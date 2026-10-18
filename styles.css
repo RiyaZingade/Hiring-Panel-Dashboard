@@ -568,3 +568,32 @@ select.input { appearance: auto; }
 .dock-item.on { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--dc) 45%, transparent)); }
 :root[data-theme="light"] .dock-item, :root[data-theme="light"] .dock-item.on, :root[data-theme="light"] .dock-item:hover { color: var(--dc); }
 .dock-ind { background: color-mix(in srgb, var(--active-dc, var(--c-blue)) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--active-dc, var(--c-blue)) 40%, transparent); }
+
+/* Toasts sit above the dock now */
+#toast { bottom: 104px; }
+
+/* Stacked notifications, bottom-right */
+.notes { position: fixed; right: 20px; bottom: 20px; z-index: 70; display: flex; flex-direction: column; gap: 10px; width: min(360px, calc(100vw - 32px)); pointer-events: none; }
+.note { --nc: var(--good); position: relative; overflow: hidden; pointer-events: auto; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: start;
+  padding: 14px 14px 16px; border-radius: 14px; background: var(--panel); border: 1px solid color-mix(in srgb, var(--nc) 35%, var(--line-2));
+  box-shadow: 0 16px 40px rgba(0,0,0,.35); animation: note-in .35s cubic-bezier(.2,.9,.3,1.15) both; }
+.note.warn { --nc: var(--warn); } .note.bad { --nc: var(--bad); }
+.note.out { animation: note-out .25s ease forwards; }
+@keyframes note-in { from { opacity: 0; transform: translateX(40px) scale(.98); } }
+@keyframes note-out { to { opacity: 0; transform: translateX(40px); } }
+.note-icon { grid-row: span 2; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; color: var(--nc); background: color-mix(in srgb, var(--nc) 15%, transparent); }
+.note-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; line-height: 1.4; }
+.note-text b { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-text span { color: var(--muted); }
+.note-close { display: grid; place-items: center; width: 26px; height: 26px; margin: -4px -4px 0 0; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; }
+.note-close:hover { background: var(--panel-2); color: var(--text); }
+.note-go { grid-column: 2 / 4; justify-self: start; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+  color: var(--nc); background: color-mix(in srgb, var(--nc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--nc) 30%, transparent); }
+.note-go:hover { color: var(--nc); background: color-mix(in srgb, var(--nc) 22%, transparent); }
+.note-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--nc); transform-origin: left; animation: note-bar 5s linear forwards; }
+.note:hover .note-bar { animation-play-state: paused; }
+@keyframes note-bar { to { transform: scaleX(0); } }
+:root[data-theme="light"] .note { box-shadow: 0 14px 34px rgba(60, 50, 35, .16); }
+:root[data-theme="light"] .note-icon, :root[data-theme="light"] .note-go { color: color-mix(in srgb, var(--nc) 65%, #000); }
+@media (prefers-reduced-motion: reduce) { .note, .note.out { animation: none; } }
+@media print { .notes { display: none; } }

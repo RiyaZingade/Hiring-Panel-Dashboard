@@ -139,6 +139,33 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 3800);
 }
 
+// ---------- notifications ----------
+// Stacked popups in the bottom-right when an agent run finishes. Each one
+// closes after 5 seconds (paused while hovered) and links to its page.
+const $notes = document.createElement('div');
+$notes.className = 'notes';
+$notes.setAttribute('role', 'region');
+$notes.setAttribute('aria-label', 'Notifications');
+document.body.appendChild($notes);
+function notify({ title, body, href, action = 'Open', tone = 'good', iconKey = 'pass', color }) {
+  const el = document.createElement('div');
+  el.className = `note ${tone}`;
+  el.setAttribute('role', 'status');
+  if (color) el.style.setProperty('--nc', color);
+  el.innerHTML = `<span class="note-icon">${icon(iconKey, 16)}</span>
+    <span class="note-text"><b>${esc(title)}</b>${body ? `<span>${esc(body)}</span>` : ''}</span>
+    <button type="button" class="note-close" aria-label="Dismiss">${icon('M18 6 6 18M6 6l12 12', 14)}</button>
+    ${href ? `<a class="note-go" href="${href}">${esc(action)}${icon('arrow', 13)}</a>` : ''}
+    <span class="note-bar"></span>`;
+  const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 250); };
+  // The bar animates over 5 s; the popup closes when it ends, and hovering pauses both.
+  el.querySelector('.note-bar').addEventListener('animationend', close);
+  el.querySelector('.note-close').addEventListener('click', close);
+  el.querySelector('.note-go')?.addEventListener('click', close);
+  $notes.appendChild(el);
+  while ($notes.children.length > 4) $notes.firstElementChild.remove();
+}
+
 // ---------- scoring ----------
 const POINTS = { PASS_ats: 100, REJECT: 0, INTERVIEW: 100, NO: 0, HIRE: 100, MAYBE: 55, PASS: 10 };
 function verdictKey(agentId, verdict) { return agentId === 'ats' && verdict === 'PASS' ? 'PASS_ats' : verdict; }
@@ -365,7 +392,11 @@ async function maybeSynthesize(appId, n, force = false) {
   const v = app.versions.find((x) => x.n === n);
   const states = v.agents.map((id) => v.reviews[id]?.status);
   if (states.some((s) => s === 'run')) return;
-  if (!doneReviews(v).length) { v.finishedAt = Date.now(); save(); refreshIfShowing(appId); return; }
+  if (!doneReviews(v).length) {
+    v.finishedAt = Date.now(); save(); refreshIfShowing(appId);
+    notify({ title: `Panel failed · ${app.company}`, body: 'No reviewer finished. Open the results to retry.', href: `#/app/${appId}/v${n}`, action: 'View results', tone: 'bad', iconKey: 'no' });
+    return;
+  }
   if (!force && v.synth.status !== 'idle') return;
   const key = `${appId}:${n}:synth`;
   if (inflight.has(key)) return;
@@ -388,6 +419,10 @@ async function maybeSynthesize(appId, n, force = false) {
   app.updatedAt = Date.now();
   save();
   refreshIfShowing(appId);
+  const h = headline(app, v);
+  notify(v.synth.status === 'done'
+    ? { title: `Hiring panel finished · ${app.company}`, body: `${h.word} · score ${h.s ?? '—'} · ${doneReviews(v).length} of ${v.agents.length} reviewers`, href: `#/app/${appId}/v${n}`, action: 'View results', tone: h.word === 'Advance' ? 'good' : h.word === 'Borderline' ? 'warn' : 'bad', iconKey: 'team' }
+    : { title: `Panel summary failed · ${app.company}`, body: 'The reviews are in, but merging them failed. Open the results to retry.', href: `#/app/${appId}/v${n}`, action: 'View results', tone: 'bad', iconKey: 'no' });
 }
 // A reload kills in-flight requests; mark them so the user can retry.
 for (const app of db.apps) {
@@ -810,6 +845,13 @@ async function runExtra(appId, key, path) {
     app[key] = { status: 'error', error: err.message };
   }
   save(); refreshIfShowing(appId);
+  const isSuggest = key === 'suggestions';
+  const meta = isSuggest ? ADVISOR : COACH;
+  const label = isSuggest ? 'Suggestions' : 'Interview prep';
+  const d = app[key].data;
+  notify(app[key].status === 'done'
+    ? { title: `${label} ready · ${app.company}`, body: isSuggest ? `${d.gaps?.length || 0} gaps to close` : `${(d.technical?.length || 0) + (d.resume?.length || 0) + (d.behavioral?.length || 0)} questions to prepare`, href: `#/app/${appId}/${isSuggest ? 'suggestions' : 'interview'}`, action: `Open ${label.toLowerCase()}`, tone: 'agent', iconKey: meta.icon, color: meta.color }
+    : { title: `${label} failed · ${app.company}`, body: app[key].error, href: `#/app/${appId}/${isSuggest ? 'suggestions' : 'interview'}`, action: 'Try again', tone: 'bad', iconKey: 'no' });
 }
 
 // ---------- suggestions ----------
