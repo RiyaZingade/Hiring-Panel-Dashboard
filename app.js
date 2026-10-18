@@ -88,8 +88,8 @@ db.profile ||= { shareWithAgents: true };
 // ---------- theme ----------
 // Accent presets: [dark-mode shade, light-mode shade].
 const ACCENTS = {
-  blue: ['#8AB4FF', '#2F6BED'], violet: ['#B9A3FF', '#7C5CE0'], teal: ['#5FD4D0', '#0E8F8A'],
-  green: ['#9BE3C4', '#15936A'], pink: ['#F58BA8', '#D23C72'], orange: ['#F0A35E', '#C9650F']
+  blue: ['#8AB4FF', '#3F6FC7'], violet: ['#B9A3FF', '#7059C2'], teal: ['#5FD4D0', '#25817C'],
+  green: ['#9BE3C4', '#2F7A57'], pink: ['#F58BA8', '#B5426B'], orange: ['#F0A35E', '#B0601C']
 };
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
 function applyTheme() {
