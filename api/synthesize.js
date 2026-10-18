@@ -8,9 +8,16 @@ const tool = {
   input_schema: {
     type: 'object',
     properties: {
-      summary: {
+      bottom_line: {
         type: 'string',
-        description: '2-3 sentences: would this person get an interview, which reviewer came closest to rejecting and why, and why it still held (or did not).'
+        description: 'One sentence, at most 18 words: would this person get an interview, and the single biggest reason.'
+      },
+      summary_points: {
+        type: 'array',
+        minItems: 3,
+        maxItems: 5,
+        items: { type: 'string' },
+        description: 'The rest of the summary as 3 to 5 bullets, each at most 18 words: what carried the resume, which reviewer came closest to rejecting and why, and why it still held (or did not). Wrap the 1 to 3 most important words of each bullet in **double asterisks**.'
       },
       fixes: {
         type: 'array',
@@ -22,7 +29,7 @@ const tool = {
             text: { type: 'string', description: 'Short imperative, at most 8 words, e.g. "Rewrite the code-review bullet".' },
             kind: { type: 'string', enum: ['wording', 'missing', 'metric', 'keyword', 'shipped', 'question'] },
             quote: { type: 'string', description: 'The resume line it is about, quoted exactly, or empty.' },
-            why: { type: 'string', description: 'One sentence on why it gets rejected.' },
+            why: { type: 'string', description: 'At most 15 words on why it gets rejected.' },
             reviewers: { type: 'array', items: { type: 'string' }, description: 'Names of reviewers who flagged it.' }
           },
           required: ['text', 'kind', 'quote', 'why', 'reviewers']
@@ -47,14 +54,14 @@ const tool = {
         type: 'array',
         maxItems: 8,
         items: { type: 'string' },
-        description: 'Questions the candidate must answer to fill the placeholders truthfully.'
+        description: 'Questions the candidate must answer to fill the placeholders truthfully. One question each, at most 20 words.'
       },
       improved_resume: {
         type: 'string',
         description: 'The full rebuilt resume in the same format as the input, every edit applied. Empty string if not requested.'
       }
     },
-    required: ['summary', 'fixes', 'edits', 'questions', 'improved_resume']
+    required: ['bottom_line', 'summary_points', 'fixes', 'edits', 'questions', 'improved_resume']
   }
 };
 

@@ -670,13 +670,7 @@ function viewResults(r) {
   const versionsSeg = app.versions.length > 1
     ? `<div class="seg" role="group" aria-label="Version">${app.versions.map((x) => `<button type="button" class="${x.n === v.n ? 'on' : ''} mono" data-action="pick-version" data-v="${x.n}" style="font-size:12px;min-width:44px">v${x.n}</button>`).join('')}</div>` : '';
 
-  const details = synth ? `
-    <section class="card"><h2>Summary</h2><p style="margin:0;color:var(--text-2);line-height:1.6">${esc(synth.summary)}</p></section>
-    <section class="card"><h2>What is wrong, worst first</h2>
-      <ol class="list" style="gap:12px">${synth.fixes.map((f) => `<li><b>${esc(f.text)}</b> <span class="muted">· ${esc((f.reviewers || []).join(', '))}</span>
-        ${f.quote ? `<div style="margin-top:4px"><q>${esc(f.quote)}</q></div>` : ''}<div class="muted" style="margin-top:2px">${esc(f.why)}</div></li>`).join('')}</ol></section>
-    ${synth.questions?.length ? `<section class="card"><h2>Questions to answer before sending</h2><ol class="list">${synth.questions.map((q) => `<li>${esc(q)}</li>`).join('')}</ol>
-      <p class="muted" style="margin:0;font-size:12px">Delete any placeholder you can't fill truthfully.</p></section>` : ''}` : '';
+  const details = synth ? synthDetails(synth, total) : '';
 
   return `<div class="page"><div class="wrap">
     <header class="crumbs">
@@ -787,6 +781,36 @@ function suggestCard(app) {
     ${d.say_it?.length ? `<div class="rsec"><span class="rlabel">Already have it? Say so</span><ul class="list">${d.say_it.map((q) => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}
     <span class="muted" style="font-size:12px">Generated ${esc(ago(sg.at))}${stale}. Only add something to your resume once you've actually done it.</span>
   </section>`;
+}
+
+// The merged summary, fixes and questions, kept short: a highlighted bottom
+// line, bullets, and one compact row per fix. Older results (one prose
+// summary) are split into sentences.
+const hl = (text) => esc(text).replace(/\*\*(.+?)\*\*/g, '<mark class="hl">$1</mark>');
+const sentences = (text) => String(text || '').split(/(?<=[.!?])\s+(?=[A-Z"(])/).filter(Boolean);
+function synthDetails(synth, total) {
+  const old = sentences(synth.summary);
+  const bottom = synth.bottom_line || old[0] || '';
+  const points = synth.summary_points?.length ? synth.summary_points : old.slice(1);
+  const fixes = (synth.fixes || []).map((f, i) => {
+    const n = Math.min(total, (f.reviewers || []).length);
+    return `<li class="fixrow">
+      <span class="fixnum">${i + 1}</span>
+      <span class="fixbody">
+        <span class="fixtitle">${icon(f.kind, 15)}<b>${esc(f.text)}</b>
+          <span class="fixcount ${n >= Math.ceil(total / 2) ? 'many' : ''}" title="${esc((f.reviewers || []).join(', '))}">${n} of ${total} reviewers</span></span>
+        <span class="muted">${esc(f.why)}</span>
+        ${f.quote ? `<details class="fixquote"><summary>Show the line</summary><q>${inline(f.quote)}</q></details>` : ''}
+      </span></li>`;
+  }).join('');
+  return `
+    <section class="card summary"><h2>Summary</h2>
+      ${bottom ? `<p class="bottomline">${hl(bottom)}</p>` : ''}
+      ${points.length ? `<ul class="list sumlist">${points.map((p) => `<li>${hl(p)}</li>`).join('')}</ul>` : ''}
+    </section>
+    <section class="card"><h2>What to fix, worst first</h2><ol class="fixlist">${fixes}</ol></section>
+    ${synth.questions?.length ? `<section class="card"><h2>Questions to answer before sending</h2><ol class="list qlist">${synth.questions.map((q) => `<li>${esc(q)}</li>`).join('')}</ol>
+      <p class="muted" style="margin:0;font-size:12px">Delete any placeholder you can't fill truthfully.</p></section>` : ''}`;
 }
 
 // Buttons on the results page that open the Suggestions and Interview prep pages.

@@ -402,3 +402,23 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border-radius
 .vbtn:hover { color: var(--text); background: color-mix(in srgb, var(--ag) 16%, var(--panel)); border-color: color-mix(in srgb, var(--ag) 60%, transparent); }
 .vbtn:hover svg:last-child { transform: translateX(2px); }
 .vbtn .ricon { --ag: inherit; }
+
+/* Merged summary, fixes and questions */
+mark.hl { background: color-mix(in srgb, var(--c-gold) 22%, transparent); color: #FDE68A; padding: 0 3px; border-radius: 4px; }
+.card.summary { border-left: 3px solid var(--c-blue); }
+.bottomline { margin: 0; padding: 12px 16px; border-radius: 10px; background: color-mix(in srgb, var(--c-blue) 10%, var(--bg)); color: var(--text); font-size: 16px; font-weight: 500; line-height: 1.5; }
+.sumlist { font-size: 14px; line-height: 1.55; gap: 8px; }
+.fixlist { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.fixrow { display: flex; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+.fixrow:first-child { border-top: 0; padding-top: 0; }
+.fixnum { flex: none; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-family: var(--mono); font-size: 12px; background: var(--panel-2); color: var(--text-2); }
+.fixrow:nth-child(-n+3) .fixnum { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.fixbody { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 13.5px; line-height: 1.5; }
+.fixtitle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--text); font-size: 14.5px; }
+.fixtitle svg { color: var(--warn); flex: none; }
+.fixcount { font-size: 11px; font-family: var(--mono); padding: 2px 8px; border-radius: 999px; background: var(--panel-2); color: var(--muted); cursor: help; }
+.fixcount.many { background: var(--bad-bg); color: var(--bad); }
+.fixquote summary { font-size: 12px; color: var(--muted); cursor: pointer; width: fit-content; }
+.fixquote summary:hover { color: var(--text); }
+.fixquote q { display: block; margin-top: 6px; padding: 8px 12px; border-left: 2px solid var(--line-3); color: var(--text-2); font-size: 13px; }
+.qlist { font-size: 14px; gap: 8px; }
