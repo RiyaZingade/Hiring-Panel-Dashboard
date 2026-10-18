@@ -734,6 +734,32 @@ function previewHtml(src) {
   return out;
 }
 
+// Marks where each letter-size page would end in the preview, so overflow
+// onto a second page is visible. Approximate: real LaTeX spacing differs.
+function markPages() {
+  const paper = document.getElementById('paper');
+  if (!paper) return;
+  paper.querySelectorAll('.pbreak').forEach((el) => el.remove());
+  paper.style.minHeight = '';
+  const pageH = paper.clientWidth * 11 / 8.5;
+  const pages = Math.max(1, Math.ceil((paper.scrollHeight - 2) / pageH));
+  paper.style.minHeight = pages * pageH + 'px';
+  for (let i = 1; i < pages; i++) {
+    const line = document.createElement('div');
+    line.className = 'pbreak';
+    line.style.top = i * pageH + 'px';
+    line.innerHTML = `<span>Page ${i + 1}</span>`;
+    paper.appendChild(line);
+  }
+  const count = document.getElementById('pagecount');
+  if (count) {
+    count.textContent = pages === 1 ? '1 page' : `${pages} pages`;
+    count.className = pages > 1 ? 'over' : '';
+  }
+}
+window.addEventListener('resize', () => { if (route().name === 'editor') markPages(); });
+document.fonts?.ready.then(() => { if (route().name === 'editor') markPages(); });
+
 // ---------- line diff ----------
 function lineDiff(a, b) {
   const A = a.split('\n'), B = b.split('\n');
@@ -790,7 +816,7 @@ function viewEditor(r) {
         <textarea class="src" spellcheck="false" data-input="draft" aria-label="Resume source">${esc(app.draft)}</textarea>
       </section>
       <section class="pane-prev ${collapsed ? 'wide' : ''}" aria-label="Preview">
-        <div class="prev-head"><span class="pane-title">Preview</span><span class="mono" style="margin-left:auto">approximate · compile in Overleaf</span></div>
+        <div class="prev-head"><span class="pane-title">Preview</span><span class="mono" style="margin-left:auto"><span id="pagecount"></span> · approximate</span></div>
         <div class="paper" id="paper">${previewHtml(app.draft)}</div>
       </section>
       ${collapsed ? `<aside class="pane-edits collapsed" aria-label="Suggested edits">
@@ -858,6 +884,7 @@ function render() {
   else if (r.name === 'library') html = viewLibrary();
   else if (r.name === 'agents') html = viewAgents();
   if (html) $app.innerHTML = html;
+  if (r.name === 'editor') markPages();
   if (focusKey) {
     const el = $app.querySelector(`[data-input="${focusKey}"]`);
     if (el) { el.focus(); try { el.setSelectionRange(selStart, selEnd); } catch (e) { /* not a text field */ } }
@@ -880,7 +907,7 @@ $app.addEventListener('input', (e) => {
     const app = findApp(r.id);
     app.draft = val;
     clearTimeout(previewTimer);
-    previewTimer = setTimeout(() => { save(); const p = document.getElementById('paper'); if (p) p.innerHTML = previewHtml(app.draft); }, 250);
+    previewTimer = setTimeout(() => { save(); const p = document.getElementById('paper'); if (p) { p.innerHTML = previewHtml(app.draft); markPages(); } }, 250);
     return;
   }
   if (ui.form && key in ui.form) ui.form[key] = key === 'target' ? Number(val) : val;
