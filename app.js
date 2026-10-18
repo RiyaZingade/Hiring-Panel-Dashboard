@@ -267,6 +267,7 @@ async function api(path, body) {
     status = res.status;
     data = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
   }
+  if (status === 404) throw new Error("Your local server is out of date and doesn't have this feature yet. Press Ctrl+C in its Terminal window and run npm run local again.");
   if (status < 200 || status >= 300) {
     const err = new Error(data.error || `Server error ${status}`);
     err.code = data.code;
@@ -368,7 +369,7 @@ for (const app of db.apps) {
     for (const [id, r] of Object.entries(v.reviews || {})) if (r.status === 'run') v.reviews[id] = { status: 'error', error: 'Interrupted by a page reload. Retry it.' };
     if (v.synth?.status === 'run') v.synth = { status: 'error', error: 'Interrupted by a page reload. Retry it.' };
   }
-  if (app.interview?.status === 'run') app.interview = { status: 'error', error: 'Interrupted by a page reload. Try again.' };
+  for (const key of ['interview', 'suggestions']) if (app[key]?.status === 'run') app[key] = { status: 'error', error: 'Interrupted by a page reload. Try again.' };
 }
 save();
 
@@ -703,6 +704,7 @@ function viewResults(r) {
         ${rows}
       </div>
     </section>
+    ${suggestCard(app)}
     ${interviewCard(app)}
     <div class="legend">${[['wording', 'Weak wording'], ['missing', 'Missing'], ['metric', 'Needs a number'], ['keyword', 'Keywords'], ['shipped', 'Shipped work'], ['question', 'Open question']].map(([k, l]) => `<span>${icon(k, 13)}${l}</span>`).join('')}</div>
     ${details}
@@ -739,18 +741,51 @@ function interviewCard(app) {
     <span class="muted" style="font-size:12px">Generated ${esc(ago(iv.at))}${stale}. Prepare from what's really on your resume; never claim experience you don't have.</span>
   </section>`;
 }
-async function runInterview(appId) {
+// Runs an on-demand agent (interview coach, gap advisor) for one application
+// and stores the result on it under `key`.
+async function runExtra(appId, key, path) {
   const app = findApp(appId);
   const v = latest(app);
-  app.interview = { status: 'run' };
+  app[key] = { status: 'run' };
   save(); refreshIfShowing(appId);
   try {
-    const data = await api('interview', { resume: v ? v.resume : app.draft, posting: app.posting, company: app.company, role: app.role });
-    app.interview = { status: 'done', data, at: Date.now(), versionN: v?.n };
+    const data = await api(path, { resume: v ? v.resume : app.draft, posting: app.posting, company: app.company, role: app.role });
+    app[key] = { status: 'done', data, at: Date.now(), versionN: v?.n };
   } catch (err) {
-    app.interview = { status: 'error', error: err.message };
+    app[key] = { status: 'error', error: err.message };
   }
   save(); refreshIfShowing(appId);
+}
+
+// ---------- suggestions ----------
+const ADVISOR = { name: 'Gap advisor', color: '#A3E635', icon: 'metric' };
+const SUGGEST_TYPES = { project: 'Project', class: 'Class', club: 'Club', certification: 'Certification', course: 'Online course', experience: 'Experience' };
+function suggestCard(app) {
+  const sg = app.suggestions || { status: 'idle' };
+  const head = (extra) => `<div class="card-head"><span class="ricon" style="--ag:${ADVISOR.color}">${icon(ADVISOR.icon, 16)}</span><h2>Suggestions</h2>
+    <span class="muted" style="font-size:12px">Requirements you don't meet yet, and how to close each gap</span>${extra}</div>`;
+  if (sg.status === 'run') return `<section class="card suggest">${head('')}<span class="muted"><span class="spin"></span> The gap advisor is comparing your resume with the requirements…</span></section>`;
+  if (sg.status !== 'done') {
+    return `<section class="card suggest">${head('')}
+      ${sg.status === 'error' ? `<span class="err">${esc(sg.error)}</span>` : '<p class="muted" style="margin:0;line-height:1.6">One more agent checks every required and preferred qualification in this posting against your resume. For each one you\'re missing or only mention, it suggests personal projects, clubs, classes or certifications to close the gap. It runs only when you ask, as one Claude call.</p>'}
+      <span><button type="button" class="btn primary" data-action="run-suggest">${icon(ADVISOR.icon)}${sg.status === 'error' ? 'Try again' : 'Find gaps and suggestions'}</button></span></section>`;
+  }
+  const d = sg.data;
+  const stale = latest(app) && sg.versionN !== latest(app).n ? ` · made for v${sg.versionN}` : '';
+  return `<section class="card suggest">${head(`<button type="button" class="btn sm" data-action="run-suggest" style="margin-left:auto">${icon('rerun', 14)}Regenerate</button>`)}
+    ${d.summary ? `<p style="margin:0;color:var(--text-2);line-height:1.6">${esc(d.summary)}</p>` : ''}
+    ${d.gaps?.length ? `<div class="gaps">${d.gaps.map((g) => `<div class="gap">
+        <div class="gap-head"><span class="gap-req">${esc(g.requirement)}</span>
+          <span class="badge ${g.level}">${g.level === 'required' ? 'Required' : 'Preferred'}</span><span class="badge ${g.status}">${g.status === 'missing' ? 'Missing' : 'Weak'}</span></div>
+        <span class="muted" style="font-size:12.5px"><span class="rlabel" style="margin-right:6px">Now</span>${esc(g.evidence)}</span>
+        <ul class="sugs">${(g.suggestions || []).map((x) => `<li>
+          <span class="sug-type">${esc(SUGGEST_TYPES[x.type] || x.type)}</span>
+          <span class="sug-body"><span>${esc(x.idea)}</span>
+            <span class="muted" style="font-size:12px">${icon('clock', 12)} ${esc(x.time)} · <span class="faint">On your resume:</span> ${esc(x.shows)}</span></span></li>`).join('')}</ul>
+      </div>`).join('')}</div>` : '<p class="muted" style="margin:0">No gaps found: your resume shows every listed requirement.</p>'}
+    ${d.say_it?.length ? `<div class="rsec"><span class="rlabel">Already have it? Say so</span><ul class="list">${d.say_it.map((q) => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}
+    <span class="muted" style="font-size:12px">Generated ${esc(ago(sg.at))}${stale}. Only add something to your resume once you've actually done it.</span>
+  </section>`;
 }
 
 // ---------- LaTeX preview ----------
@@ -957,6 +992,12 @@ function viewAgents() {
         <p class="agent-about">Prepares you for the interview itself. Reads the job posting, including anything it says about the interview process, and your resume. Runs only when you click Generate on a results page.</p>
         <div class="agent-sec"><span class="agent-label">Gives you</span><ul class="list"><li>The interview stages, if the posting lists them (it never invents a process)</li><li>The topics the interview will likely focus on</li><li>Technical, resume and behavioral questions, each with why they'd ask it and how to prepare</li><li>Good questions to ask the interviewer</li></ul></div>
       </article>
+      <article class="agent-card synth" style="--ag:${ADVISOR.color}">
+        <div class="agent-card-head"><span class="ricon">${icon(ADVISOR.icon, 18)}</span>
+          <span style="display:flex;flex-direction:column;gap:2px"><span class="mono faint" style="font-size:11px">On demand</span><h2>${ADVISOR.name}</h2></span></div>
+        <p class="agent-about">Finds the requirements in this posting that your resume doesn't show yet, and suggests how to close each gap. Runs only when you click Find gaps on a results page.</p>
+        <div class="agent-sec"><span class="agent-label">Gives you</span><ul class="list"><li>Each missing or weak requirement, marked required or preferred</li><li>Personal projects, clubs, classes, certifications or courses to close it, with rough time and how it would read on your resume</li><li>Things you may already have done but haven't said</li></ul></div>
+      </article>
     </div>
     <section class="card"><h2>What every reviewer returns</h2><p class="muted" style="margin:0;line-height:1.6">A verdict, the single line that hurt most (quoted exactly), up to three problems tagged as weak wording, missing, needs a number, keywords, shipped work or open question, and 2 to 5 key points.</p></section>
     <section class="card"><h2>Verdicts and score</h2><p class="muted" style="margin:0;line-height:1.6">The score averages every verdict: positive verdicts (PASS, INTERVIEW, HIRE) count 100, MAYBE 55, NO HIRE 10, REJECT and NO 0. Reviewers are told never to invent facts. This is a second opinion from language models, not a guarantee of an interview.</p></section>`);
@@ -1007,7 +1048,7 @@ function viewSetup() {
       <p class="muted" style="margin:0">Press <kbd>Ctrl+C</kbd> in the Terminal window, or close it.</p>
     </section>
     <section class="card note"><h2>Good to know</h2><ul class="list">
-      <li><b>Usage:</b> one full panel is about 9 Claude calls, all on your own plan, plus one more if you generate interview questions. On the Pro plan, several panels in a row can hit your usage limit, so space them out or turn off reviewers you don't need.</li>
+      <li><b>Usage:</b> one full panel is about 9 Claude calls, all on your own plan, plus one more each time you generate interview questions or suggestions. On the Pro plan, several panels in a row can hit your usage limit, so space them out or turn off reviewers you don't need.</li>
       <li><b>Exact PDFs:</b> install a LaTeX engine (<code class="inline">brew install tectonic</code>) and Download PDF compiles your real LaTeX. Without one, it prints the approximate preview.</li>
       <li><b>"Port 3000 is already in use":</b> the server is already running in another Terminal window. Use that one.</li>
       <li><b>"claude: command not found":</b> install Claude Code, then open a new Terminal window.</li>
@@ -1239,7 +1280,8 @@ $app.addEventListener('click', async (e) => {
       render();
       break;
     case 'connect': openConnector(); break;
-    case 'run-interview': runInterview(app.id); break;
+    case 'run-interview': runExtra(app.id, 'interview', 'interview'); break;
+    case 'run-suggest': runExtra(app.id, 'suggestions', 'suggest'); break;
     case 'copy-cmd':
       try { await navigator.clipboard.writeText(el.dataset.cmd); toast('Copied. Paste it into Terminal.'); } catch (err) { toast('Copy failed. Select the command and copy it by hand.'); }
       break;

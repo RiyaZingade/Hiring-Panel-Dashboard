@@ -375,3 +375,21 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border-radius
 .iv-list > li::marker { color: var(--ag); font-family: var(--mono); font-size: 12px; }
 .iv-q { display: block; color: var(--text); font-weight: 500; line-height: 1.45; margin-bottom: 4px; }
 .iv-meta { font-size: 12.5px; gap: 3px; padding-left: 14px; }
+
+/* Suggestions (gap advisor) */
+.card.suggest { --ag: #A3E635; border-top: 3px solid var(--ag); background: color-mix(in srgb, var(--ag) 4%, var(--panel)); }
+.card.suggest .card-head { align-items: center; }
+.gaps { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
+.gap { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 12px; background: var(--bg); border: 1px solid color-mix(in srgb, var(--ag) 18%, var(--line)); }
+.gap-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gap-req { font-weight: 600; color: var(--text); margin-right: auto; line-height: 1.4; }
+.badge { font-size: 11px; font-family: var(--mono); padding: 2px 8px; border-radius: 999px; border: 1px solid; }
+.badge.required { color: #FCA5A5; border-color: color-mix(in srgb, #FCA5A5 35%, transparent); }
+.badge.preferred { color: var(--c-blue); border-color: color-mix(in srgb, var(--c-blue) 35%, transparent); }
+.badge.missing { color: var(--bad); background: var(--bad-bg); border-color: transparent; }
+.badge.weak { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
+.sugs { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.sugs li { display: flex; gap: 10px; align-items: flex-start; }
+.sug-type { flex: none; min-width: 92px; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ag); padding-top: 2px; }
+.sug-body { display: flex; flex-direction: column; gap: 3px; line-height: 1.5; color: var(--text-2); font-size: 13.5px; }
+.sug-body svg { vertical-align: -1px; }

@@ -12,7 +12,7 @@ Run your resume past a panel of seven AI reviewers, each reading it alone agains
 
 A final step merges their verdicts into ranked fixes, suggested edits you can accept one by one, and a rebuilt resume with placeholders for facts only you can supply.
 
-When you're ready to interview, an **interview coach** reads the posting (including any interview process it describes) and your resume. It writes the technical, resume and behavioral questions you're likely to get, with how to prepare for each.
+When you're ready to interview, an **interview coach** reads the posting (including any interview process it describes) and your resume. It writes the technical, resume and behavioral questions you're likely to get, with how to prepare for each. A **gap advisor** lists the posting's requirements your resume doesn't show yet and suggests projects, clubs, classes or certifications to close each one.
 
 It runs on **your own Claude Code login**, so there's no API key and nothing to pay beyond your Claude plan. Your applications and resumes are saved in your browser.
 
@@ -24,7 +24,7 @@ You need all three of these, or the panel won't run:
 2. **[Claude Code](https://claude.com/claude-code)**, installed.
 3. **Signed in to Claude Code.** Run `claude` once in Terminal and finish the login.
 
-> **Heads up on usage:** one full panel is about 9 Claude calls (7 reviewers, the merge step and an optional rebuild), plus one more if you generate interview questions. They all count against your own Claude plan. On the Pro plan, several panels in a row can hit your usage limit, so space them out or turn off reviewers you don't need.
+> **Heads up on usage:** one full panel is about 9 Claude calls (7 reviewers, the merge step and an optional rebuild), plus one more each time you generate interview questions or suggestions. They all count against your own Claude plan. On the Pro plan, several panels in a row can hit your usage limit, so space them out or turn off reviewers you don't need.
 
 ## Set it up (first time only)
 
