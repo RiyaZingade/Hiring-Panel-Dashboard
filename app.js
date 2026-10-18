@@ -1312,7 +1312,9 @@ function render() {
     const el = $app.querySelector(`[data-input="${focusKey}"]`);
     if (el) { el.focus(); try { el.setSelectionRange(selStart, selEnd); } catch (e) { /* not a text field */ } }
   }
-  document.title = { apps: 'Applications', new: 'New application', results: 'Panel results', suggest: 'Suggestions', interview: 'Interview prep', editor: 'Resume editor', library: 'Resume library', agents: 'Panel agents', setup: 'Setup', credits: 'Acknowledgements', settings: 'Settings', profile: 'Profile' }[r.name] + ' · Hiring Panel';
+  const page = { apps: 'Applications', new: 'New application', results: 'Panel results', suggest: 'Suggestions', interview: 'Interview prep', editor: 'Resume editor', library: 'Resume library', agents: 'Panel agents', setup: 'Setup', credits: 'Acknowledgements', settings: 'Settings', profile: 'Profile' }[r.name];
+  // Brand first so it survives a narrow tab; the home page is just the brand.
+  document.title = r.name === 'apps' || !page ? 'Hiring Panel Dashboard' : `Hiring Panel Dashboard · ${page}`;
 }
 
 // ---------- events ----------

@@ -25,8 +25,8 @@ const routes = {
 // Set HOSTED_ORIGIN if you deploy your own copy of the site.
 const HOSTED_ORIGIN = process.env.HOSTED_ORIGIN || 'https://hiring-panel-studio.vercel.app';
 const LOOPBACK_HOSTS = new Set([`localhost:${port}`, `127.0.0.1:${port}`, `[::1]:${port}`]);
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css' };
-const STATIC = new Set(['/index.html', '/app.js', '/styles.css', '/bridge.html']);
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
+const STATIC = new Set(['/index.html', '/app.js', '/styles.css', '/bridge.html', '/favicon.svg']);
 
 // Compiles the resume with a LaTeX engine on this machine, if one is installed.
 // Shell escape stays off, and each compile runs in its own temp folder.
