@@ -971,7 +971,7 @@ function viewCredits() {
       <span class="agent-label">Dashboard</span>
       <h2>Riya Zingade</h2>
       <p class="muted" style="margin:0;line-height:1.6">Riya, a computer science student at Cal Poly San Luis Obispo, built the Hiring Panel dashboard: the interface, the editor, and running the panel locally through Claude Code so it's free to use.</p>
-      <span style="display:flex;flex-wrap:wrap;gap:8px"><a class="btn sm" href="https://github.com/riyazingade" target="_blank" rel="noopener">GitHub</a><a class="btn sm" href="https://www.linkedin.com/in/riya-zingade/" target="_blank" rel="noopener">LinkedIn</a><a class="btn sm" href="https://personalwebsite-riya-zingade.vercel.app/" target="_blank" rel="noopener">Website</a><a class="btn sm" href="${REPO_URL}" target="_blank" rel="noopener">Source code</a></span>
+      <span style="display:flex;flex-wrap:wrap;gap:8px"><a class="btn sm" href="https://github.com/riyazingade" target="_blank" rel="noopener">GitHub</a><a class="btn sm" href="https://www.linkedin.com/in/riya-zingade/" target="_blank" rel="noopener">LinkedIn</a><a class="btn sm" href="${REPO_URL}" target="_blank" rel="noopener">Source code</a></span>
     </section>
     <p class="muted" style="margin:0;font-size:12px">Reviewers run on <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a> by Anthropic.</p>`);
 }
