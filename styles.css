@@ -17,6 +17,10 @@
   --warn-bg: #2A1E12;
   --bad: #F07A6A;
   --bad-bg: #2A1513;
+  --src: #B9A3FF;
+  --src-bg: #13111C;
+  --prev-bg: #0A0E16;
+  --edit-bg: #14110C;
   --mono: 'Geist Mono', ui-monospace, monospace;
 }
 * { box-sizing: border-box; }
@@ -221,3 +225,38 @@ a.trow:hover { background: #0F1013; color: var(--text); }
   .editor, .panes, .pane-prev { display: block; min-height: 0; padding: 0; background: #fff; }
   .paper { width: 8.5in; max-width: none; aspect-ratio: auto; overflow: visible; border-radius: 0; padding: 0.5in 0.55in; font-size: 9.8pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Editor colors: each pane has its own hue (source violet, preview blue,
+   edits amber), and toolbar buttons are filled so they read as buttons. */
+.ebar { background: var(--panel); }
+.ebar .btn { background: #1B1D24; border-color: #343843; }
+.ebar .btn:hover { background: #242731; border-color: #464B57; }
+.ebar .btn.primary { background: var(--accent); border-color: var(--accent); }
+.btn.tone-src { color: var(--src); border-color: #3B3358; background: #1A1626; }
+.btn.tone-src:hover { color: #D2C4FF; border-color: #574C80; background: #221D33; }
+.btn.tone-edit { color: var(--warn); border-color: #5A4024; background: #241A10; }
+.btn.tone-edit:hover { color: #F7BF8A; border-color: #7A5730; background: #2E2114; }
+.btn.tone-export { color: var(--good); border-color: #2A4D3F; background: #12201A; }
+.btn.tone-export:hover { color: #BDF0D9; border-color: #3B6A57; background: #172A22; }
+.pane-title { display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-weight: 600; font-size: 13px; }
+.pane-title::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.pane-src { background: var(--src-bg); box-shadow: inset 0 2px 0 var(--src); }
+.pane-src .pane-head { background: #18152A; border-bottom-color: #2A2440; box-shadow: inset 0 2px 0 var(--src); }
+.pane-src .pane-title::before { background: var(--src); }
+.pane-src .src { background: var(--src-bg); }
+.pane-prev { background: var(--prev-bg); box-shadow: inset 0 2px 0 var(--accent); }
+.prev-head .pane-title::before { background: var(--accent); }
+.prev-head span:last-child { color: var(--muted); }
+.pane-edits { background: var(--edit-bg); box-shadow: inset 0 2px 0 var(--warn); }
+.pane-edits .pane-head { background: #1E1810; border-bottom-color: #33281A; box-shadow: inset 0 2px 0 var(--warn); }
+.pane-edits .pane-title::before { background: var(--warn); }
+.pane-edits .edit { background: #1A1610; border-color: #2F271B; border-left: 3px solid #3A3D45; }
+.pane-edits .edit.open { border-left-color: var(--warn); }
+.pane-edits .edit.done { border-left-color: var(--good); }
+.pane-edits .edit.dismissed { border-left-color: var(--faint); }
+.pane-edits .askbox { background: #1A1610; border-color: #3A2F1F; }
+.btn.accept { background: var(--good); border-color: var(--good); color: #0B0C0E; font-weight: 600; }
+.btn.accept:hover { filter: brightness(1.08); color: #0B0C0E; }
+.pane-edits.collapsed .vtoggle { color: var(--warn); }
+.pane-edits.collapsed .vtoggle:hover { background: #1E1810; color: #F7BF8A; }
+@media print { .pane-prev { box-shadow: none; background: #fff; } }

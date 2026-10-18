@@ -775,36 +775,36 @@ function viewEditor(r) {
       <span class="tag">${esc(app.role)} · ${v ? (changed ? `v${nextN} draft` : `v${v.n}`) : 'draft'}</span>
       <span class="muted" style="font-size:12px">${synth ? `${edits.filter((e) => e.state === 'Applied').length} of ${edits.length} edits applied` : v ? 'No suggested edits yet' : 'Not run yet'}${changed ? ' · unsaved changes' : ''}</span>
       <div style="margin-left:auto;display:flex;flex-wrap:wrap;gap:8px">
-        ${v ? `<button type="button" class="btn" data-action="compare">Compare with v${v.n}</button>` : ''}
-        ${synth?.improved_resume ? `<button type="button" class="btn" data-action="use-rebuilt">Use panel's rebuilt resume</button>` : ''}
-        <button type="button" class="btn" data-action="copy">Copy</button>
-        <button type="button" class="btn" data-action="download">Download .tex</button>
-        <button type="button" class="btn" data-action="download-pdf" ${ui.pdfBusy ? 'disabled' : ''}>${ui.pdfBusy ? '<span class="spin"></span> Building PDF…' : 'Download PDF'}</button>
+        ${v ? `<button type="button" class="btn tone-src" data-action="compare">Compare with v${v.n}</button>` : ''}
+        ${synth?.improved_resume ? `<button type="button" class="btn tone-edit" data-action="use-rebuilt">Use panel's rebuilt resume</button>` : ''}
+        <button type="button" class="btn tone-export" data-action="copy">Copy</button>
+        <button type="button" class="btn tone-export" data-action="download">Download .tex</button>
+        <button type="button" class="btn tone-export" data-action="download-pdf" ${ui.pdfBusy ? 'disabled' : ''}>${ui.pdfBusy ? '<span class="spin"></span> Building PDF…' : 'Download PDF'}</button>
         <button type="button" class="btn" data-action="save-library">Save to library</button>
         <button type="button" class="btn primary" data-action="rerun">${icon('rerun')}${v ? `Run panel on v${nextN}` : 'Run panel'}</button>
       </div>
     </header>
     <div class="panes">
       <section class="pane-src" aria-label="Resume source">
-        <div class="pane-head"><span style="color:var(--text)">Source</span><span class="mono" style="margin-left:auto">${app.draft.split('\n').length} lines · edit freely</span></div>
+        <div class="pane-head"><span class="pane-title">Source</span><span class="mono" style="margin-left:auto">${app.draft.split('\n').length} lines · edit freely</span></div>
         <textarea class="src" spellcheck="false" data-input="draft" aria-label="Resume source">${esc(app.draft)}</textarea>
       </section>
       <section class="pane-prev ${collapsed ? 'wide' : ''}" aria-label="Preview">
-        <div class="prev-head muted"><span>Preview</span><span class="mono" style="margin-left:auto">approximate · compile in Overleaf</span></div>
+        <div class="prev-head"><span class="pane-title">Preview</span><span class="mono" style="margin-left:auto">approximate · compile in Overleaf</span></div>
         <div class="paper" id="paper">${previewHtml(app.draft)}</div>
       </section>
       ${collapsed ? `<aside class="pane-edits collapsed" aria-label="Suggested edits">
         <button type="button" class="vtoggle" data-action="toggle-edits" aria-expanded="false">${icon('back', 16)}<span>Show suggested edits · ${openCount} open</span></button>
       </aside>` : `<aside class="pane-edits" aria-label="Suggested edits">
-        <div class="pane-head"><span style="color:var(--text)">Suggested edits</span><span class="mono" style="margin-left:auto">${openCount} open</span>
+        <div class="pane-head"><span class="pane-title">Suggested edits</span><span class="mono" style="margin-left:auto">${openCount} open</span>
           <button type="button" class="btn sm" data-action="toggle-edits" aria-expanded="true" title="Hide this panel to make the preview bigger">Hide${icon('M9 18l6-6-6-6', 14)}</button></div>
         <div class="edits">
-          ${edits.length ? edits.map((e) => `<div class="edit ${e.state === 'Applied' ? 'done' : ''} ${e.state === 'Dismissed' ? 'dismissed' : ''}">
+          ${edits.length ? edits.map((e) => `<div class="edit ${e.state === 'Applied' ? 'done' : ''} ${e.state === 'Dismissed' ? 'dismissed' : ''} ${e.state === 'Open' ? 'open' : ''}">
               <span style="display:flex;align-items:center;gap:8px;font-size:12px" class="muted"><span class="ecode">${e.i + 1}</span>${esc(e.where)}<span style="margin-left:auto;color:${e.state === 'Applied' ? 'var(--good)' : e.state === 'Open' ? 'var(--warn)' : 'var(--faint)'}">${e.state}</span></span>
               <span style="line-height:1.5;color:var(--text-2)">${esc(e.text)}</span>
               ${e.state === 'Open' || e.state === 'Not found' ? `<details><summary class="muted" style="font-size:12px;cursor:pointer">Show change</summary>
                 <div class="diff" style="margin-top:8px"><div class="d">${esc(e.find)}</div><div class="a">${esc(e.replace)}</div></div></details>` : ''}
-              ${e.state === 'Open' ? `<span style="display:flex;gap:8px"><button type="button" class="btn sm" style="background:#1E2026;border:0" data-action="accept-edit" data-i="${e.i}">Accept</button><button type="button" class="btn sm ghost" data-action="dismiss-edit" data-i="${e.i}">Dismiss</button></span>` : ''}
+              ${e.state === 'Open' ? `<span style="display:flex;gap:8px"><button type="button" class="btn sm accept" data-action="accept-edit" data-i="${e.i}">Accept</button><button type="button" class="btn sm" data-action="dismiss-edit" data-i="${e.i}">Dismiss</button></span>` : ''}
               ${e.state === 'Not found' ? `<span class="muted" style="font-size:12px">The text it targets isn't in the draft anymore. Apply it by hand or dismiss it.</span><span><button type="button" class="btn sm ghost" data-action="dismiss-edit" data-i="${e.i}">Dismiss</button></span>` : ''}
             </div>`).join('')
             : `<div class="muted" style="font-size:13px;padding:6px">${v ? (v.synth?.status === 'run' ? 'The panel is still merging verdicts.' : 'Run the panel to get suggested edits.') : 'Run the panel to get suggested edits.'}</div>`}
