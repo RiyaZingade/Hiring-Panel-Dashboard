@@ -716,8 +716,8 @@ function viewResults(r) {
 const COACH = { name: 'Interview coach', color: '#7DD3FC', icon: 'interview' };
 function interviewCard(app) {
   const iv = app.interview || { status: 'idle' };
-  const head = (extra) => `<div class="card-head"><span class="ricon" style="--ag:${COACH.color}">${icon(COACH.icon, 16)}</span><h2>Interview prep</h2>
-    <span class="muted" style="font-size:12px">Questions this team is likely to ask, from the posting and your resume</span>${extra}</div>`;
+  const head = (extra) => `<div class="card-head"><span class="ricon" style="--ag:${COACH.color}">${icon(COACH.icon, 16)}</span>
+    <span style="font-size:13px;color:var(--text-2)">Questions this team is likely to ask, from the posting and your resume</span>${extra}</div>`;
   if (iv.status === 'run') return `<section class="card interview">${head('')}<span class="muted"><span class="spin"></span> The interview coach is reading the posting…</span></section>`;
   if (iv.status !== 'done') {
     return `<section class="card interview">${head('')}
@@ -763,8 +763,8 @@ const ADVISOR = { name: 'Gap advisor', color: '#A3E635', icon: 'metric' };
 const SUGGEST_TYPES = { project: 'Project', class: 'Class', club: 'Club', certification: 'Certification', course: 'Online course', experience: 'Experience' };
 function suggestCard(app) {
   const sg = app.suggestions || { status: 'idle' };
-  const head = (extra) => `<div class="card-head"><span class="ricon" style="--ag:${ADVISOR.color}">${icon(ADVISOR.icon, 16)}</span><h2>Suggestions</h2>
-    <span class="muted" style="font-size:12px">Requirements you don't meet yet, and how to close each gap</span>${extra}</div>`;
+  const head = (extra) => `<div class="card-head"><span class="ricon" style="--ag:${ADVISOR.color}">${icon(ADVISOR.icon, 16)}</span>
+    <span style="font-size:13px;color:var(--text-2)">Requirements you don't meet yet, and how to close each gap</span>${extra}</div>`;
   if (sg.status === 'run') return `<section class="card suggest">${head('')}<span class="muted"><span class="spin"></span> The gap advisor is comparing your resume with the requirements…</span></section>`;
   if (sg.status !== 'done') {
     return `<section class="card suggest">${head('')}
