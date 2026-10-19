@@ -19,6 +19,8 @@ const routes = {
   '/api/rewrite': (await import('./api/rewrite.js')).default,
   '/api/interview': (await import('./api/interview.js')).default,
   '/api/suggest': (await import('./api/suggest.js')).default,
+  '/api/research': (await import('./api/research.js')).default,
+  '/api/panel': (await import('./api/panel.js')).default,
   '/api/pdf': compilePdf
 };
 

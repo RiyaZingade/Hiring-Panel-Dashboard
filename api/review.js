@@ -1,5 +1,5 @@
 // One reviewer reads the resume against the posting and returns a verdict.
-import { handle, callTool, clip, HONESTY } from './_lib.js';
+import { handle, callTool, clip, companyBlock, HONESTY } from './_lib.js';
 
 const READER_VERDICTS = ['HIRE', 'MAYBE', 'PASS'];
 
@@ -92,18 +92,26 @@ function reviewTool(agentId, agent) {
   };
 }
 
+// Custom reviewers come from the panel builder (api/panel.js), each with its
+// own brief written for this company and role.
+function customReviewer(reviewer) {
+  const name = clip(reviewer?.name, 80).trim();
+  const brief = clip(reviewer?.brief, 1500).trim();
+  if (!name || !brief) throw new Error('This custom reviewer has no name or brief.');
+  return { name, verdicts: READER_VERDICTS, brief: `${brief} HIRE means you would advance this person; PASS means you would not.` };
+}
+
 export default function handler(req, res) {
-  return handle(req, res, async ({ agent: agentId, resume, posting, company, role }) => {
-    const agent = AGENTS[agentId];
+  return handle(req, res, async ({ agent: agentId, reviewer, resume, posting, company, role, research }) => {
+    const agent = AGENTS[agentId] || (/^c\d+$/.test(String(agentId)) ? customReviewer(reviewer) : null);
     if (!agent) throw new Error(`Unknown reviewer "${agentId}".`);
     if (!String(resume || '').trim()) throw new Error('The resume is empty.');
     const review = await callTool({
       system: `${agent.brief} You see only this resume and this posting; nobody else's notes. ${HONESTY}`,
-      user: `Role: ${clip(role, 200)} at ${clip(company, 200)}\n\n<job_posting>\n${clip(posting)}\n</job_posting>\n\n<resume>\n${clip(resume)}\n</resume>\n\nThe resume may be LaTeX source; judge it as the rendered one-page document. Red \\add{...} text is a placeholder the candidate will fill or delete, so ignore placeholders.`,
+      user: `Role: ${clip(role, 200)} at ${clip(company, 200)}\n\n<job_posting>\n${clip(posting)}\n</job_posting>\n\n${companyBlock(research)}<resume>\n${clip(resume)}\n</resume>\n\nThe resume may be LaTeX source; judge it as the rendered one-page document. Red \\add{...} text is a placeholder the candidate will fill or delete, so ignore placeholders.`,
       tool: reviewTool(agentId, agent),
       maxTokens: 1500
     });
     return { agent: agentId, ...review };
   });
 }
-

@@ -1,6 +1,6 @@
 // The interview coach: reads the posting (and any interview process it
 // describes) plus the resume, then writes questions to prepare for.
-import { handle, callTool, clip, HONESTY } from './_lib.js';
+import { handle, callTool, clip, companyBlock, HONESTY } from './_lib.js';
 
 const question = {
   type: 'object',
@@ -39,11 +39,11 @@ const tool = {
 };
 
 export default function handler(req, res) {
-  return handle(req, res, async ({ resume, posting, company, role, profile }) => {
+  return handle(req, res, async ({ resume, posting, company, role, research, profile }) => {
     if (!String(posting || '').trim()) throw new Error('This application has no job posting.');
     return callTool({
       system: `You are an interview coach preparing a candidate for one specific interview. Read the job posting closely, including anything it says about the interview process, and the candidate's resume. Write the questions this team is most likely to ask, and how to prepare for each from what is actually on the resume. Only describe an interview process if the posting states it; never invent stages, companies' practices or facts about the candidate. ${HONESTY}`,
-      user: `Role: ${clip(role, 200)} at ${clip(company, 200)}\n\n<job_posting>\n${clip(posting)}\n</job_posting>\n\n<resume>\n${clip(resume)}\n</resume>\n\n${profile ? `<candidate_profile>\nFacts the candidate gave about themselves (not on the resume, so don't treat them as shown to employers):\n${clip(profile, 3000)}\n</candidate_profile>\n\n` : ''}The resume may be LaTeX source. Ignore \\add{...} placeholders.`,
+      user: `Role: ${clip(role, 200)} at ${clip(company, 200)}\n\n<job_posting>\n${clip(posting)}\n</job_posting>\n\n${companyBlock(research)}<resume>\n${clip(resume)}\n</resume>\n\n${profile ? `<candidate_profile>\nFacts the candidate gave about themselves (not on the resume, so don't treat them as shown to employers):\n${clip(profile, 3000)}\n</candidate_profile>\n\n` : ''}The resume may be LaTeX source. Ignore \\add{...} placeholders.`,
       tool,
       maxTokens: 4000
     });

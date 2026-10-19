@@ -14,6 +14,8 @@ A final step merges their verdicts into ranked fixes, suggested edits you can ac
 
 When you're ready to interview, an **interview coach** reads the posting (including any interview process it describes) and your resume. It writes the technical, resume and behavioral questions you're likely to get, with how to prepare for each. A **gap advisor** lists the posting's requirements your resume doesn't show yet and suggests projects, clubs, classes or certifications to close each one.
 
+**Company panels (optional).** Add the company's website and a **company researcher** reads its home page plus pages like About, Careers, Values and News. It summarizes what the company does, the values it states, what it's building now and what that means for who it hires, and every agent reads that summary. Choose **Built for this company** and a **panel builder** replaces the generic readers with 4 to 6 reviewers this company would really put on the hiring team, for example a firmware engineer and a test engineer for an embedded role. You can edit, add or remove any of them before you run.
+
 It runs on **your own Claude Code login**, so there's no API key and nothing to pay beyond your Claude plan. Your applications and resumes are saved in your browser.
 
 ## Before you start
@@ -24,7 +26,7 @@ You need all three of these, or the panel won't run:
 2. **[Claude Code](https://claude.com/claude-code)**, installed.
 3. **Signed in to Claude Code.** Run `claude` once in Terminal and finish the login.
 
-> **Heads up on usage:** one full panel is about 9 Claude calls (7 reviewers, the merge step and an optional rebuild), plus one more each time you generate interview questions or suggestions. They all count against your own Claude plan. On the Pro plan, several panels in a row can hit your usage limit, so space them out or turn off reviewers you don't need.
+> **Heads up on usage:** one full panel is about 9 Claude calls (7 reviewers, the merge step and an optional rebuild), plus one more each time you generate interview questions or suggestions, research a company or build a company panel. They all count against your own Claude plan. On the Pro plan, several panels in a row can hit your usage limit, so space them out or turn off reviewers you don't need.
 
 ## Set it up (first time only)
 
@@ -62,6 +64,7 @@ Applications are saved separately for each address: the hosted site and localhos
 
 - `local.mjs` serves the app on `localhost:3000`. It runs each reviewer with `claude -p` (Claude Code's non-interactive mode), with tools turned off and a fixed JSON schema for the reply.
 - The server only accepts requests from this computer and from the hosted site.
+- Company research fetches public web pages from your computer. It reads only the site you enter and a few pages it links to, and it skips private and local network addresses. Sites that load their text with JavaScript may give little, so you can add your own notes.
 - The hosted site is static. It sends each panel call to your local server, never to a server of ours.
 
 ## Privacy
