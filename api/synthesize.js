@@ -1,6 +1,6 @@
 // Merges every reviewer's verdict into ranked fixes, concrete edits and,
 // optionally, a rebuilt resume with [ADD: ...] placeholders for missing facts.
-import { handle, callTool, clip, HONESTY } from './_lib.js';
+import { handle, callTool, clip, companyBlock, HONESTY } from './_lib.js';
 
 const tool = {
   name: 'submit_synthesis',
@@ -66,13 +66,13 @@ const tool = {
 };
 
 export default function handler(req, res) {
-  return handle(req, res, async ({ resume, posting, company, role, reviews, onePage, autoRevise }) => {
+  return handle(req, res, async ({ resume, posting, company, role, research, reviews, onePage, autoRevise }) => {
     const notes = (reviews || [])
       .map((r) => `## ${r.name}: ${r.verdict}${r.note ? ` (${r.note})` : ''}\nHurt most: "${r.hurt_most?.quote}" — ${r.hurt_most?.why}\n${(r.key_points || []).map((k) => `- ${k}`).join('\n') || r.full || ''}`)
       .join('\n\n');
     return callTool({
       system: `You run a hiring panel. Merge the reviewers' notes into one ranked list of mistakes, then write concrete edits that fix them using only facts already in the resume. Where a fix needs a fact you do not have, leave a placeholder. ${HONESTY}${onePage ? ' The resume must stay on one page: prefer cutting and tightening over adding.' : ''}`,
-      user: `Role: ${clip(role, 200)} at ${clip(company, 200)}\n\n<job_posting>\n${clip(posting)}\n</job_posting>\n\n<resume>\n${clip(resume)}\n</resume>\n\n<reviews>\n${clip(notes, 30000)}\n</reviews>\n\n${autoRevise ? 'Also write improved_resume: the full rebuilt resume with every edit applied.' : 'Leave improved_resume as an empty string.'}`,
+      user: `Role: ${clip(role, 200)} at ${clip(company, 200)}\n\n<job_posting>\n${clip(posting)}\n</job_posting>\n\n${companyBlock(research)}<resume>\n${clip(resume)}\n</resume>\n\n<reviews>\n${clip(notes, 30000)}\n</reviews>\n\n${autoRevise ? 'Also write improved_resume: the full rebuilt resume with every edit applied.' : 'Leave improved_resume as an empty string.'}`,
       tool,
       maxTokens: autoRevise ? 12000 : 4000
     });

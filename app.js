@@ -32,6 +32,36 @@ const AGENTS = [
 ];
 const AGENT = Object.fromEntries(AGENTS.map((a) => [a.id, a]));
 
+// A company panel replaces the generic readers with reviewers the panel builder
+// (api/panel.js) designed for one company and role. Custom ids are c1, c2, …;
+// each version keeps a copy of the panel it ran with.
+const CUSTOM_COLORS = ['#8AB4FF', '#9BE3C4', '#F58BA8', '#F2C66D', '#B9A3FF', '#F0A35E'];
+const CUSTOM_ICONS = ['brief', 'dayone', 'team', 'ceo', 'search', 'rival'];
+function agentFor(app, id, v) {
+  return (v?.panel || app?.panel || []).find((x) => x.id === id) || AGENT[id]
+    || { id, name: 'Reviewer', desc: '', icon: 'team', color: '#9AA0AA', custom: true, brief: '' };
+}
+function customReviewer(r, i) {
+  return { id: `c${i + 1}`, name: r.name || 'Reviewer', desc: r.desc || '', about: r.about || '', checks: r.checks || [], brief: r.brief || '',
+    icon: CUSTOM_ICONS[i % CUSTOM_ICONS.length], color: CUSTOM_COLORS[i % CUSTOM_COLORS.length], custom: true };
+}
+const nextCustomId = (list) => `c${Math.max(0, ...list.map((x) => Number(x.id.slice(1)) || 0)) + 1}`;
+// The research, flattened to text for the agents.
+function researchText(research) {
+  const d = research?.status === 'done' ? research.data : null;
+  if (!d) return '';
+  const part = (label, items) => items?.length ? `${label}:\n${items.map((x) => `- ${x}`).join('\n')}` : '';
+  return [
+    d.summary && `What they do: ${d.summary}`,
+    part('Products', d.products?.map((x) => `${x.name}: ${x.what}`)),
+    part('Stated values', d.values?.map((x) => `${x.value} (${x.evidence})`)),
+    part('Current projects and news', d.recent?.map((x) => `${x.item} (${x.relevance})`)),
+    part('Likely to favor in a candidate', d.looks_for),
+    part('How they work', d.culture),
+    part('Could count against a candidate', d.watch_outs)
+  ].filter(Boolean).join('\n\n');
+}
+
 const I = {
   bot: 'M9 3v2M15 3v2M9 19v2M15 19v2M3 9h2M3 15h2M19 9h2M19 15h2M7 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM9 9h6v6H9z',
   brief: 'M4 7h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18',
@@ -65,6 +95,7 @@ const I = {
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   library: 'M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20',
   botface: 'M12 3v3M7 6h10a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3zM9 11.5v1.5M15 11.5v1.5M9.5 16h5M1.5 12v3M22.5 12v3',
+  building: 'M3 21h18M5 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16M16 9h3a2 2 0 0 1 2 2v10M9 7h3M9 11h3M9 15h3',
   heart: 'M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z',
   gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z'
 };
@@ -351,6 +382,7 @@ function startVersion(app, resume) {
     startedAt: Date.now(),
     finishedAt: null,
     agents: [...app.settings.agents],
+    panel: app.panel ? JSON.parse(JSON.stringify(app.panel)) : null,
     reviews: Object.fromEntries(app.settings.agents.map((id) => [id, { status: 'run' }])),
     synth: { status: 'idle' },
     edits: {}
@@ -364,7 +396,7 @@ function startVersion(app, resume) {
 }
 function refreshIfShowing(appId) {
   const r = route();
-  if (r.name === 'apps' || (r.id === appId && ['results', 'suggest', 'interview'].includes(r.name))) render();
+  if (r.name === 'apps' || (r.id === appId && ['results', 'suggest', 'interview', 'company'].includes(r.name))) render();
 }
 async function runReview(appId, n, agentId) {
   const key = `${appId}:${n}:${agentId}`;
@@ -376,7 +408,11 @@ async function runReview(appId, n, agentId) {
   save();
   refreshIfShowing(appId);
   try {
-    const data = await api('review', { agent: agentId, resume: v.resume, posting: app.posting, company: app.company, role: app.role });
+    const g = agentFor(app, agentId, v);
+    const data = await api('review', {
+      agent: agentId, reviewer: g.custom ? { name: g.name, brief: g.brief } : undefined,
+      resume: v.resume, posting: app.posting, company: app.company, role: app.role, research: researchText(app.research)
+    });
     v.reviews[agentId] = { status: 'done', data };
   } catch (err) {
     v.reviews[agentId] = { status: 'error', error: err.message };
@@ -405,9 +441,9 @@ async function maybeSynthesize(appId, n, force = false) {
   save();
   refreshIfShowing(appId);
   try {
-    const reviews = doneReviews(v).map((r) => ({ ...r, name: AGENT[r.id].name }));
+    const reviews = doneReviews(v).map((r) => ({ ...r, name: agentFor(app, r.id, v).name }));
     const data = await api('synthesize', {
-      resume: v.resume, posting: app.posting, company: app.company, role: app.role,
+      resume: v.resume, posting: app.posting, company: app.company, role: app.role, research: researchText(app.research),
       reviews, onePage: app.settings.onePage, autoRevise: app.settings.autoRevise
     });
     v.synth = { status: 'done', data };
@@ -430,7 +466,7 @@ for (const app of db.apps) {
     for (const [id, r] of Object.entries(v.reviews || {})) if (r.status === 'run') v.reviews[id] = { status: 'error', error: 'Interrupted by a page reload. Retry it.' };
     if (v.synth?.status === 'run') v.synth = { status: 'error', error: 'Interrupted by a page reload. Retry it.' };
   }
-  for (const key of ['interview', 'suggestions']) if (app[key]?.status === 'run') app[key] = { status: 'error', error: 'Interrupted by a page reload. Try again.' };
+  for (const key of ['interview', 'suggestions', 'research', 'panelBuild']) if (app[key]?.status === 'run') app[key] = { status: 'error', error: 'Interrupted by a page reload. Try again.' };
 }
 save();
 
@@ -448,6 +484,7 @@ function route() {
     if (parts[2] === 'edit') return { name: 'editor', id: parts[1] };
     if (parts[2] === 'suggestions') return { name: 'suggest', id: parts[1] };
     if (parts[2] === 'interview') return { name: 'interview', id: parts[1] };
+    if (parts[2] === 'company') return { name: 'company', id: parts[1] };
     return { name: 'results', id: parts[1], v: parts[2] ? Number(parts[2].replace('v', '')) : null };
   }
   return { name: 'apps' };
@@ -469,7 +506,8 @@ function blankForm() {
     company: '', role: '', posting: '',
     mode: base ? 'saved' : 'latex',
     resume: '', fileName: '', savedId: base ? base.id : null,
-    agents: AGENTS.map((a) => a.id), target: 85, onePage: true, autoRevise: true
+    agents: AGENTS.map((a) => a.id), target: 85, onePage: true, autoRevise: true,
+    url: '', notes: '', research: null, panelMode: 'standard', custom: [], panelNote: '', build: null, includeAts: true
   };
 }
 
@@ -509,7 +547,7 @@ const $dock = document.getElementById('dock');
 $dock.innerHTML = `<span class="dock-ind" aria-hidden="true"></span>${DOCK.map((d) => `<a href="${d.href}" data-k="${d.key}" class="${d.plus ? 'dock-plus' : 'dock-item'}" aria-label="${d.label}"${d.color ? ` style="--dc:${d.color}"` : ''}>
   ${d.plus ? `<span class="plus-circle">${icon('plus', 22)}</span>` : d.svg || icon(d.icon, 21)}<span class="dock-tip">${d.label}</span></a>`).join('')}`;
 function updateDock(r) {
-  const key = { apps: 'apps', results: 'apps', suggest: 'apps', interview: 'apps', library: 'library', new: 'new', agents: 'agents', credits: 'credits' }[r.name];
+  const key = { apps: 'apps', results: 'apps', suggest: 'apps', interview: 'apps', company: 'apps', library: 'library', new: 'new', agents: 'agents', credits: 'credits' }[r.name];
   $dock.hidden = r.name === 'editor';
   $dock.querySelectorAll('a').forEach((a) => {
     const on = a.dataset.k === key;
@@ -553,12 +591,13 @@ function viewApps() {
     const v = latest(a);
     const st = appStatus(a);
     const s = v ? score(v) : null;
-    const bars = AGENTS.map((g) => {
-      const r = v?.reviews?.[g.id];
+    const bars = (v ? v.agents : a.settings.agents).map((id) => {
+      const g = agentFor(a, id, v);
+      const r = v?.reviews?.[id];
       let c = 'var(--line-3)';
       if (r?.status === 'run') c = 'var(--warn)';
       else if (r?.status === 'error') c = 'var(--bad)';
-      else if (r?.status === 'done') c = ['NO', 'REJECT'].includes(r.data.verdict) || (g.id !== 'ats' && r.data.verdict === 'PASS') ? 'var(--bad)' : r.data.verdict === 'MAYBE' ? 'var(--warn)' : 'var(--good)';
+      else if (r?.status === 'done') c = ['NO', 'REJECT'].includes(r.data.verdict) || (id !== 'ats' && r.data.verdict === 'PASS') ? 'var(--bad)' : r.data.verdict === 'MAYBE' ? 'var(--warn)' : 'var(--good)';
       return `<span style="background:${c}" title="${esc(g.name)}"></span>`;
     }).join('');
     const finished = v ? Object.values(v.reviews).filter((r) => r.status === 'done').length : 0;
@@ -612,7 +651,7 @@ function viewNew() {
           <span class="mono" style="font-size:13px">${esc(r.name)}</span><span class="muted" style="margin-left:auto;font-size:12px">${esc(r.meta || '')} · ${esc(ago(r.savedAt))}</span></button>`).join('')}</div>`
       : `<div class="empty">No saved resumes yet. Paste one, or add it to the <a href="#/library">library</a>.</div>`;
   }
-  const count = f.agents.length;
+  const count = f.panelMode === 'custom' ? f.custom.length + (f.includeAts ? 1 : 0) : f.agents.length;
   return shell('new', `
     <header class="crumbs"><a class="back" href="#/">${icon('back')}Applications</a><span class="slash">/</span><h1 class="sm">New application</h1></header>
     <div class="grid2">
@@ -632,14 +671,30 @@ function viewNew() {
         ${resumePane}
       </section>
     </div>
+    <section class="card c4" aria-labelledby="co">
+      <div class="card-head"><span class="step">03</span><h2 id="co">Company</h2><span class="muted" style="font-size:12px">Optional · every agent reads what the company does, values and is building now.</span></div>
+      <div class="research-form">
+        <label class="field">Company website<input class="input" type="url" data-input="url" value="${esc(f.url)}" placeholder="https://www.example.com"></label>
+        <label class="field">Your notes (optional)<textarea class="textarea" rows="2" data-input="notes" placeholder="Anything you already know: a recent launch, the team, what a recruiter told you">${esc(f.notes)}</textarea></label>
+        <span>${f.research?.status === 'run' ? '' : `<button type="button" class="btn ${f.research?.status === 'done' ? '' : 'primary'}" data-action="research-form">${icon(f.research?.status === 'done' ? 'rerun' : 'search', 14)}${f.research?.status === 'done' ? 'Research again' : 'Research company'}</button>`}</span>
+      </div>
+      ${researchStatus(f.research)}
+      ${f.research?.status === 'done' ? researchView(f.research.data, true) : ''}
+    </section>
     <section class="card c3" aria-labelledby="pn">
-      <div class="card-head"><span class="step">03</span><h2 id="pn">Panel</h2><span class="muted" style="font-size:12px">Reviewers run in parallel, then a synthesizer merges their verdicts.</span></div>
+      <div class="card-head"><span class="step">04</span><h2 id="pn">Panel</h2>
+        <div class="seg" role="group" aria-label="Panel type" style="margin-left:auto">${[['standard', 'Standard'], ['custom', 'Built for this company']].map(([id, l]) => `<button type="button" class="${f.panelMode === id ? 'on' : ''}" aria-pressed="${f.panelMode === id}" data-action="panel-mode" data-v="${id}">${l}</button>`).join('')}</div></div>
+      ${f.panelMode === 'standard' ? `<span class="muted" style="font-size:12px">Reviewers run in parallel, then a synthesizer merges their verdicts.</span>
       <div class="agents">${AGENTS.map((g) => {
         const on = f.agents.includes(g.id);
         return `<button type="button" class="agent ${on ? 'on' : ''}" style="--ag:${g.color}" aria-pressed="${on}" data-action="toggle-agent" data-id="${g.id}">
           <span style="display:flex;align-items:center;gap:8px;width:100%"><span class="ricon sm">${icon(g.icon, 14)}</span><span style="font-weight:500">${g.name}</span><span class="check" aria-hidden="true"></span></span>
           <span class="muted" style="font-size:12px;line-height:1.45">${g.desc}</span></button>`;
-      }).join('')}</div>
+      }).join('')}</div>` : `${f.custom.length ? panelEditor(f.custom, f.panelNote) : `<p class="muted" style="margin:0;line-height:1.6">The panel builder designs the reviewers ${f.company.trim() ? esc(f.company.trim()) : 'this company'} would really put on this hiring team, from the posting${f.research?.status === 'done' ? ' and the company research' : '. Research the company first for a sharper panel'}. You can edit, add or remove any of them before running.</p>`}
+      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between">
+        ${buildButton(f.build, f.custom.length > 0, 'build-panel-form')}
+        <label class="muted" style="font-size:13px;display:flex;gap:8px;align-items:center"><input type="checkbox" data-check="includeAts" ${f.includeAts ? 'checked' : ''}>Include the automated screen</label>
+      </div>`}
       <div class="opts">
         <label>Target score<input class="input mono" type="number" min="0" max="100" data-input="target" value="${f.target}" style="width:76px;min-height:40px"></label>
         <label><input type="checkbox" data-check="onePage" ${f.onePage ? 'checked' : ''}>Keep page count at 1</label>
@@ -666,8 +721,16 @@ function createAppFromForm() {
   const app = {
     id: uid(), company: f.company.trim(), role: f.role.trim(), posting: f.posting.trim(),
     settings: { agents: [...f.agents], target: Number(f.target) || 85, onePage: f.onePage, autoRevise: f.autoRevise },
+    companyUrl: f.url.trim(), companyNotes: f.notes.trim(),
+    research: f.research?.status === 'done' ? f.research : null,
+    panel: null, panelNote: '',
     versions: [], draft: resume, createdAt: Date.now(), updatedAt: Date.now()
   };
+  if (f.panelMode === 'custom' && f.custom.length) {
+    app.panel = f.custom.map((x) => ({ ...x }));
+    app.panelNote = f.panelNote;
+    app.settings.agents = [...(f.includeAts ? ['ats'] : []), ...app.panel.map((x) => x.id)];
+  }
   db.apps.push(app);
   save();
   return app;
@@ -718,7 +781,7 @@ function viewResults(r) {
 
   const topNames = synth?.fixes?.[0]?.reviewers || [];
   const rows = v.agents.map((id, i) => {
-    const g = AGENT[id];
+    const g = agentFor(app, id, v);
     const rv = v.reviews[id] || { status: 'idle' };
     let verdictCell, hurtCell, full = '';
     if (rv.status === 'run') {
@@ -752,7 +815,7 @@ function viewResults(r) {
     return `<div class="rblock">
       <div class="rrow" role="row">
         <span class="rnum" role="cell">${i + 1}</span>
-        <span class="rcell" role="cell"><span class="ricon" style="--ag:${g.color}">${icon(g.icon, 17)}</span><span style="font-weight:500">${g.name}</span></span>
+        <span class="rcell" role="cell" style="flex-wrap:nowrap"><span class="ricon" style="--ag:${g.color}">${icon(g.icon, 17)}</span><span style="font-weight:500;min-width:0">${esc(g.name)}</span></span>
         <span class="rcell" role="cell">${verdictCell}</span>
         <span class="rcell" role="cell">${hurtCell}</span>
         <span role="cell" style="display:grid;place-items:center">${full ? `<button type="button" class="expander ${open ? 'open' : ''}" data-action="toggle-row" data-id="${id}" aria-expanded="${open}" aria-label="${open ? 'Hide' : 'Show'} full note from ${g.name}">${icon('chev')}</button>` : ''}</span>
@@ -788,7 +851,7 @@ function viewResults(r) {
         <span class="mono" style="font-size:12px;color:var(--good)">${esc(h.sub)} · target ${app.settings.target}</span></span></div>
       <div class="vcard"><span class="muted" style="font-size:12px">Tally · ${done.length} of ${total} in</span><div style="display:flex;flex-wrap:wrap;gap:8px">${tallies}</div></div>
       <div class="vcard" style="justify-content:flex-start"><span class="muted" style="font-size:12px">Fix first</span>${fixFirst}</div>
-      <div class="vside">${toolButton(app, 'suggest')}${toolButton(app, 'interview')}</div>
+      <div class="vside">${toolButton(app, 'company')}${toolButton(app, 'suggest')}${toolButton(app, 'interview')}</div>
     </section>
     <section aria-label="Reviewer results" style="overflow-x:auto">
       <div class="rtable" role="table">
@@ -839,7 +902,7 @@ async function runExtra(appId, key, path) {
   app[key] = { status: 'run' };
   save(); refreshIfShowing(appId);
   try {
-    const data = await api(path, { resume: v ? v.resume : app.draft, posting: app.posting, company: app.company, role: app.role, profile: profileText() });
+    const data = await api(path, { resume: v ? v.resume : app.draft, posting: app.posting, company: app.company, role: app.role, research: researchText(app.research), profile: profileText() });
     app[key] = { status: 'done', data, at: Date.now(), versionN: v?.n };
   } catch (err) {
     app[key] = { status: 'error', error: err.message };
@@ -917,11 +980,13 @@ function synthDetails(synth, total) {
 
 // Buttons on the results page that open the Suggestions and Interview prep pages.
 function toolButton(app, kind) {
-  const t = kind === 'suggest'
-    ? { ...ADVISOR, label: 'Suggestions', key: 'suggestions', path: 'suggestions', count: (d) => `${d.gaps?.length || 0} gap${d.gaps?.length === 1 ? '' : 's'} to close` }
-    : { ...COACH, label: 'Interview prep', key: 'interview', path: 'interview', count: (d) => `${(d.technical?.length || 0) + (d.resume?.length || 0) + (d.behavioral?.length || 0)} questions` };
+  const t = {
+    company: { ...RESEARCHER, label: 'Company', key: 'research', path: 'company', count: (d) => `${app.panel ? `${app.panel.length} custom reviewers` : 'Standard panel'} · ${d.sources?.length || 0} pages read`, idle: app.panel ? `${app.panel.length} custom reviewers · not researched` : 'Not researched yet' },
+    suggest: { ...ADVISOR, label: 'Suggestions', key: 'suggestions', path: 'suggestions', count: (d) => `${d.gaps?.length || 0} gap${d.gaps?.length === 1 ? '' : 's'} to close` },
+    interview: { ...COACH, label: 'Interview prep', key: 'interview', path: 'interview', count: (d) => `${(d.technical?.length || 0) + (d.resume?.length || 0) + (d.behavioral?.length || 0)} questions` }
+  }[kind];
   const st = app[t.key] || { status: 'idle' };
-  const sub = st.status === 'done' ? t.count(st.data) : st.status === 'run' ? '<span class="spin"></span> Running…' : st.status === 'error' ? 'Failed · open to retry' : 'Not generated yet';
+  const sub = st.status === 'done' ? t.count(st.data) : st.status === 'run' ? '<span class="spin"></span> Running…' : st.status === 'error' ? 'Failed · open to retry' : t.idle || 'Not generated yet';
   return `<a class="vbtn" href="#/app/${app.id}/${t.path}" style="--ag:${t.color}">
     <span class="ricon">${icon(t.icon, 16)}</span>
     <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600;color:var(--text)">${t.label}</span><span class="muted" style="font-size:12px">${sub}</span></span>
@@ -940,6 +1005,115 @@ function viewExtra(r, kind) {
     </header>
     ${kind === 'suggest' ? suggestCard(app) : interviewCard(app)}
   </div></div>`;
+}
+
+// ---------- company research and company panels ----------
+const RESEARCHER = { name: 'Company researcher', color: '#FCA5A5', icon: 'building' };
+// The research result. `compact` is the short form on the New application page.
+function researchView(d, compact) {
+  if (!d) return '';
+  const terms = (items, cls = '') => `<span class="terms">${items.map((x) => `<span class="term ${cls}">${esc(x)}</span>`).join('')}</span>`;
+  const sec = (label, body) => `<div class="rsec"><span class="rlabel">${label}</span>${body}</div>`;
+  const thin = d.coverage === 'thin' ? `<span class="muted" style="font-size:12px">The site had little readable text, so this leans on the posting. Add your own notes for more.</span>` : '';
+  if (compact) {
+    return `<div class="research compact">
+      <p style="margin:0;line-height:1.55">${esc(d.summary)}</p>
+      ${d.values?.length ? terms(d.values.map((x) => x.value)) : ''}
+      <span class="muted" style="font-size:12px">${d.recent?.length || 0} current projects · ${d.looks_for?.length || 0} hiring signals · ${d.sources?.length || 0} pages read</span>${thin}</div>`;
+  }
+  return `<div class="research">
+    <p style="margin:0;line-height:1.6">${esc(d.summary)}</p>${thin}
+    <div class="research-grid">
+      ${d.products?.length ? sec('Products', `<ul class="list">${d.products.map((x) => `<li><b>${esc(x.name)}.</b> ${esc(x.what)}</li>`).join('')}</ul>`) : ''}
+      ${d.values?.length ? sec('Stated values', `<ul class="list">${d.values.map((x) => `<li><b>${esc(x.value)}.</b> <span class="muted">${esc(x.evidence)}</span></li>`).join('')}</ul>`) : ''}
+      ${d.recent?.length ? sec('Working on now', `<ul class="list">${d.recent.map((x) => `<li><b>${esc(x.item)}.</b> <span class="muted">${esc(x.relevance)}</span></li>`).join('')}</ul>`) : ''}
+      ${d.looks_for?.length ? sec('Likely to favor', `<ul class="list">${d.looks_for.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`) : ''}
+      ${d.culture?.length ? sec('How they work', `<ul class="list">${d.culture.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`) : ''}
+      ${d.watch_outs?.length ? sec('Could count against you', `<ul class="list">${d.watch_outs.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`) : ''}
+    </div>
+    ${d.sources?.length ? `<details class="sources"><summary>${d.sources.length} pages read</summary><ul class="list">${d.sources.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title || x.url)}</a></li>`).join('')}</ul></details>` : ''}
+  </div>`;
+}
+function researchStatus(st) {
+  if (st?.status === 'run') return `<span class="muted"><span class="spin"></span> Reading the company website…</span>`;
+  if (st?.status === 'error') return `<span class="err">${esc(st.error)}</span>`;
+  return '';
+}
+// Editable list of custom reviewers. Edits change the list in place; nothing
+// re-renders while typing.
+function panelEditor(list, note) {
+  return `${note ? `<p class="muted" style="margin:0;font-size:13px;line-height:1.55">${esc(note)}</p>` : ''}
+    <div class="crevs">${list.map((g, i) => `<div class="crev" style="--ag:${g.color}">
+      <div class="crev-head"><span class="ricon sm">${icon(g.icon, 14)}</span>
+        <input class="input" type="text" data-rev="name" data-i="${i}" value="${esc(g.name)}" aria-label="Reviewer ${i + 1} role" placeholder="Their role on the team">
+        <button type="button" class="btn sm ghost" data-action="rev-remove" data-i="${i}" aria-label="Remove ${esc(g.name)}">${icon('trash', 14)}</button></div>
+      <textarea class="textarea" rows="2" data-rev="desc" data-i="${i}" placeholder="The question they read for" aria-label="What ${esc(g.name)} reads for">${esc(g.desc)}</textarea>
+      ${g.about ? `<span class="muted" style="font-size:12px;line-height:1.5">${esc(g.about)}</span>` : ''}
+      <details class="crev-brief"><summary>Instructions</summary>
+        <textarea class="textarea" rows="5" data-rev="brief" data-i="${i}" aria-label="Instructions for ${esc(g.name)}">${esc(g.brief)}</textarea></details>
+    </div>`).join('')}
+    <button type="button" class="crev add" data-action="rev-add">${icon('plus', 18)}<span>Add reviewer</span></button></div>`;
+}
+function buildButton(st, hasPanel, action) {
+  if (st?.status === 'run') return `<span class="muted"><span class="spin"></span> Designing the panel…</span>`;
+  return `<span style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    <button type="button" class="btn ${hasPanel ? '' : 'primary'}" data-action="${action}">${icon(hasPanel ? 'rerun' : 'team')}${hasPanel ? 'Rebuild panel' : 'Build panel'}</button>
+    ${st?.status === 'error' ? `<span class="err">${esc(st.error)}</span>` : ''}</span>`;
+}
+function viewCompany(r) {
+  const app = findApp(r.id);
+  if (!app) return shell('apps', `<div class="empty">That application no longer exists. <a href="#/">Back to applications</a></div>`);
+  const st = app.research || { status: 'idle' };
+  const hasAts = app.settings.agents.includes('ats');
+  return `<div class="page"><div class="wrap">
+    <header class="crumbs">
+      <a class="back" href="#/app/${app.id}">${icon('back')}Panel results</a><span class="slash">/</span>
+      <div style="display:flex;flex-direction:column;gap:2px"><h1 class="sm">Company</h1>
+        <span class="muted" style="font-size:13px">${esc(app.company)} · ${esc(app.role)}</span></div>
+    </header>
+    <section class="card company" style="--ag:${RESEARCHER.color}">
+      <div class="card-head"><span class="ricon" style="--ag:${RESEARCHER.color}">${icon(RESEARCHER.icon, 16)}</span>
+        <span style="font-size:13px;color:var(--text-2)">What ${esc(app.company)} does, values and is working on, from its website</span></div>
+      <div class="research-form">
+        <label class="field">Company website<input class="input" type="url" data-input="appUrl" value="${esc(app.companyUrl || '')}" placeholder="https://www.example.com"></label>
+        <label class="field">Your notes (optional)<textarea class="textarea" rows="2" data-input="appNotes" placeholder="Anything you already know: a recent launch, the team, what a recruiter told you">${esc(app.companyNotes || '')}</textarea></label>
+        <span>${st.status === 'run' ? '' : `<button type="button" class="btn ${st.status === 'done' ? '' : 'primary'}" data-action="research-app">${icon(st.status === 'done' ? 'rerun' : 'search', 14)}${st.status === 'done' ? 'Research again' : 'Research company'}</button>`}</span>
+      </div>
+      ${researchStatus(st)}
+      ${st.status === 'done' ? researchView(st.data) + `<span class="muted" style="font-size:12px">Researched ${esc(ago(st.at))}. Every agent on this application now reads this. Re-run the panel to use it.</span>` : '<p class="muted" style="margin:0;line-height:1.6">One agent reads the company\'s home page and a few pages like About, Careers, Values and News, then summarizes what matters for this role. The reviewers, interview coach and gap advisor all use it. Sites that load their text with JavaScript may give little; add your own notes then.</p>'}
+    </section>
+    <section class="card company-panel">
+      <div class="card-head"><span class="ricon" style="--ag:var(--c-orange)">${icon('team', 16)}</span>
+        <span style="font-size:13px;color:var(--text-2)">${app.panel ? `Panel built for ${esc(app.company)}` : 'Standard panel'} · used on the next run</span>
+        ${app.panel ? '<button type="button" class="btn sm" data-action="use-standard-app" style="margin-left:auto">Use the standard panel</button>' : ''}</div>
+      ${app.panel ? panelEditor(app.panel, app.panelNote) : `<p class="muted" style="margin:0;line-height:1.6">The panel builder designs the reviewers ${esc(app.company)} would really put on this hiring team, from the posting${st.status === 'done' ? ' and the research above' : ''}. You can edit, add or remove any of them.</p>`}
+      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between">
+        ${buildButton(app.panelBuild, !!app.panel, 'build-panel-app')}
+        ${app.panel ? `<label class="muted" style="font-size:13px;display:flex;gap:8px;align-items:center"><input type="checkbox" data-check="appAts" ${hasAts ? 'checked' : ''}>Include the automated screen</label>` : ''}
+      </div>
+      <span><a class="btn primary" href="#/app/${app.id}/edit">${icon('rerun')}Go to the editor to re-run</a></span>
+    </section>
+  </div></div>`;
+}
+async function researchFor(holder, input) {
+  holder.research = { status: 'run' };
+  try {
+    holder.research = { status: 'done', data: await api('research', input), at: Date.now() };
+  } catch (err) {
+    holder.research = { status: 'error', error: err.message };
+  }
+  return holder.research;
+}
+async function buildPanelFor(holder, input, key) {
+  holder[key] = { status: 'run' };
+  try {
+    const data = await api('panel', input);
+    holder[key] = { status: 'done' };
+    return data;
+  } catch (err) {
+    holder[key] = { status: 'error', error: err.message };
+    return null;
+  }
 }
 
 // ---------- LaTeX preview ----------
@@ -1141,6 +1315,12 @@ function viewAgents() {
     row({ color: 'var(--text-2)', iconKey: 'bolt', name: 'Synthesizer', desc: 'Merges every verdict into ranked fixes.', checksLabel: 'Gives you',
       about: 'Runs after the seven reviewers. Reads all their verdicts together, merges duplicates and ranks what is wrong, worst first.',
       checks: ['A bottom line and a short summary', 'The ranked fixes, with how many reviewers flagged each one', 'Suggested edits you can accept one by one in the editor', 'A rebuilt resume, with [ADD: …] placeholders for facts only you know', 'Questions to answer before you send it'] }),
+    row({ color: RESEARCHER.color, iconKey: RESEARCHER.icon, name: RESEARCHER.name, tag: 'optional', desc: "What the company does, values and is building now.", checksLabel: 'Gives you',
+      about: "Reads the company's own website (home page plus pages like About, Careers, Values and News) so every other agent can judge fit with this company, not just the posting. Add a website under Company on a new application, or on any application's Company page.",
+      checks: ['What the company does and its products', 'The values it states, with the line from the site', 'New projects, launches and news, and why they matter for the role', 'What it is likely to favor, and what could count against you', 'The pages it read, so you can check them'] }),
+    row({ color: 'var(--c-orange)', iconKey: 'team', name: 'Panel builder', tag: 'optional', desc: 'Designs the hiring team for one company and role.', checksLabel: 'Gives you',
+      about: 'Choose "Built for this company" on a new application. Instead of the six generic readers, it writes 4 to 6 reviewers this company would really put on the hiring team, grounded in the posting and the company research. You can edit, add or remove any of them, and the automated screen stays on unless you turn it off.',
+      checks: ["Each reviewer's role on the team and the question they read for", 'Their instructions, which you can rewrite', 'A note on how this company likely hires for the role'] }),
     row({ color: ADVISOR.color, iconKey: ADVISOR.icon, name: ADVISOR.name, tag: 'on demand', desc: 'Requirements you are missing, and how to close each gap.', checksLabel: 'Gives you',
       about: "Finds the requirements in a posting that your resume doesn't show yet. Open it with the Suggestions button on any results page.",
       checks: ['Each missing or weak requirement, marked required or preferred', 'Projects, clubs, classes, certifications or courses to close it, with rough time and how it would read on your resume', "Things you may already have done but haven't said"] }),
@@ -1298,6 +1478,7 @@ function render() {
   else if (r.name === 'new') html = viewNew();
   else if (r.name === 'results') html = viewResults(r);
   else if (r.name === 'suggest' || r.name === 'interview') html = viewExtra(r, r.name);
+  else if (r.name === 'company') html = viewCompany(r);
   else if (r.name === 'editor') html = viewEditor(r);
   else if (r.name === 'library') html = viewLibrary();
   else if (r.name === 'agents') html = viewAgents();
@@ -1312,7 +1493,7 @@ function render() {
     const el = $app.querySelector(`[data-input="${focusKey}"]`);
     if (el) { el.focus(); try { el.setSelectionRange(selStart, selEnd); } catch (e) { /* not a text field */ } }
   }
-  const page = { apps: 'Applications', new: 'New application', results: 'Panel results', suggest: 'Suggestions', interview: 'Interview prep', editor: 'Resume editor', library: 'Resume library', agents: 'Panel agents', setup: 'Setup', credits: 'Acknowledgements', settings: 'Settings', profile: 'Profile' }[r.name];
+  const page = { apps: 'Applications', new: 'New application', results: 'Panel results', suggest: 'Suggestions', interview: 'Interview prep', company: 'Company', editor: 'Resume editor', library: 'Resume library', agents: 'Panel agents', setup: 'Setup', credits: 'Acknowledgements', settings: 'Settings', profile: 'Profile' }[r.name];
   // Brand first so it survives a narrow tab; the home page is just the brand.
   document.title = r.name === 'apps' || !page ? 'Hiring Panel Dashboard' : `Hiring Panel Dashboard · ${page}`;
 }
@@ -1327,9 +1508,17 @@ $app.addEventListener('input', (e) => {
     if (av) av.textContent = initials(db.profile.name);
     return;
   }
+  if (e.target.dataset.rev) {
+    const r = route();
+    const list = r.name === 'new' ? ui.form?.custom : findApp(r.id)?.panel;
+    const g = list?.[Number(e.target.dataset.i)];
+    if (g) { g[e.target.dataset.rev] = e.target.value; if (r.name !== 'new') save(); }
+    return;
+  }
   const key = e.target.dataset.input;
   if (!key) return;
   const r = route();
+  if (key === 'appUrl' || key === 'appNotes') { const a = findApp(r.id); a[key === 'appUrl' ? 'companyUrl' : 'companyNotes'] = e.target.value; save(); return; }
   const val = e.target.value;
   if (key === 'search') { ui.search = val; render(); return; }
   if (key === 'ask') { ui.ask = val; return; }
@@ -1347,7 +1536,13 @@ $app.addEventListener('input', (e) => {
 $app.addEventListener('change', (e) => {
   if (e.target.dataset.pref) { db.prefs[e.target.dataset.pref] = e.target.value || null; save(); render(); toast('Default resume updated.'); return; }
   if (e.target.dataset.profileCheck) { db.profile[e.target.dataset.profileCheck] = e.target.checked; save(); return; }
-  if (e.target.dataset.check && ui.form) ui.form[e.target.dataset.check] = e.target.checked;
+  if (e.target.dataset.check === 'appAts') {
+    const a = findApp(route().id);
+    const rest = a.settings.agents.filter((x) => x !== 'ats');
+    a.settings.agents = e.target.checked ? ['ats', ...rest] : rest;
+    save(); return;
+  }
+  if (e.target.dataset.check && ui.form) { ui.form[e.target.dataset.check] = e.target.checked; if (e.target.dataset.check === 'includeAts') render(); }
   if (e.target.matches('[data-file]') && e.target.files[0]) readFile(e.target.files[0]).catch((err) => toast('Could not read that file: ' + err.message));
 });
 $app.addEventListener('dragover', (e) => { const z = e.target.closest('[data-drop]'); if (z) { e.preventDefault(); z.classList.add('over'); } });
@@ -1447,7 +1642,7 @@ $app.addEventListener('click', async (e) => {
       break;
     }
     case 'run-new': {
-      if (!ui.form.agents.length) { toast('Pick at least one reviewer.'); break; }
+      if (ui.form.panelMode === 'custom' ? !ui.form.custom.length : !ui.form.agents.length) { toast(ui.form.panelMode === 'custom' ? 'Build the panel first, or switch to the standard panel.' : 'Pick at least one reviewer.'); break; }
       const created = createAppFromForm();
       if (!created) break;
       ui.form = null;
@@ -1512,6 +1707,74 @@ $app.addEventListener('click', async (e) => {
     case 'set-accent': db.prefs.accent = el.dataset.v; save(); applyTheme(); render(); break;
     case 'set-default': db.prefs.defaultResumeId = el.dataset.id; save(); render(); toast('Set as your default resume.'); break;
     case 'run-interview': runExtra(app.id, 'interview', 'interview'); break;
+    case 'panel-mode': ui.form.panelMode = el.dataset.v; render(); break;
+    case 'research-form': {
+      const f = ui.form;
+      if (!f.url.trim()) { toast('Add the company website first.'); break; }
+      const pending = researchFor(f, { url: f.url, notes: f.notes, company: f.company, role: f.role, posting: f.posting });
+      render();
+      await pending;
+      if (ui.form === f) render();
+      if (f.research.status === 'error') toast('Research failed: ' + f.research.error);
+      break;
+    }
+    case 'build-panel-form': {
+      const f = ui.form;
+      if (!f.posting.trim()) { toast('Paste the job posting first.'); break; }
+      const pending = buildPanelFor(f, { company: f.company, role: f.role, posting: f.posting, research: researchText(f.research) }, 'build');
+      render();
+      const data = await pending;
+      if (data) { f.custom = data.reviewers.map(customReviewer); f.panelNote = data.note; }
+      if (ui.form === f) render();
+      break;
+    }
+    case 'research-app': {
+      if (!(app.companyUrl || '').trim()) { toast('Add the company website first.'); break; }
+      const pending = researchFor(app, { url: app.companyUrl, notes: app.companyNotes, company: app.company, role: app.role, posting: app.posting });
+      save(); render();
+      await pending;
+      app.updatedAt = Date.now(); save(); refreshIfShowing(app.id);
+      notify(app.research.status === 'done'
+        ? { title: `Company research ready · ${app.company}`, body: `${app.research.data.sources?.length || 0} pages read. Re-run the panel to use it.`, href: `#/app/${app.id}/company`, action: 'Open company', tone: 'agent', iconKey: RESEARCHER.icon, color: RESEARCHER.color }
+        : { title: `Company research failed · ${app.company}`, body: app.research.error, href: `#/app/${app.id}/company`, action: 'Try again', tone: 'bad', iconKey: 'no' });
+      break;
+    }
+    case 'build-panel-app': {
+      const pending = buildPanelFor(app, { company: app.company, role: app.role, posting: app.posting, research: researchText(app.research) }, 'panelBuild');
+      save(); render();
+      const data = await pending;
+      if (data) {
+        app.panel = data.reviewers.map(customReviewer);
+        app.panelNote = data.note;
+        app.settings.agents = [...(app.settings.agents.includes('ats') ? ['ats'] : []), ...app.panel.map((x) => x.id)];
+      }
+      save(); refreshIfShowing(app.id);
+      break;
+    }
+    case 'use-standard-app':
+      if (await confirmDialog({ title: 'Go back to the standard panel?', body: 'The next run uses the 7 standard reviewers. Your company reviewers are removed; past versions keep their results.', ok: 'Use standard' })) {
+        app.panel = null; app.panelNote = '';
+        app.settings.agents = AGENTS.map((a) => a.id);
+        save(); render();
+      }
+      break;
+    case 'rev-remove': {
+      const list = r.name === 'new' ? ui.form.custom : app.panel;
+      if (list.length <= 1) { toast('Keep at least one reviewer.'); break; }
+      const [gone] = list.splice(Number(el.dataset.i), 1);
+      if (app) { app.settings.agents = app.settings.agents.filter((x) => x !== gone.id); save(); }
+      render();
+      break;
+    }
+    case 'rev-add': {
+      const list = r.name === 'new' ? ui.form.custom : app.panel;
+      const g = customReviewer({ name: 'New reviewer', desc: '', brief: 'You are on the hiring team for this role at this company. Read for whether this person would do the job well here, and say what would make you pass.' }, list.length);
+      g.id = nextCustomId(list);
+      list.push(g);
+      if (app) { app.settings.agents.push(g.id); save(); }
+      render();
+      break;
+    }
     case 'run-suggest': runExtra(app.id, 'suggestions', 'suggest'); break;
     case 'copy-cmd':
       try { await navigator.clipboard.writeText(el.dataset.cmd); toast('Copied. Paste it into Terminal.'); } catch (err) { toast('Copy failed. Select the command and copy it by hand.'); }

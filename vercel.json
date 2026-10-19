@@ -14,6 +14,12 @@
     },
     "api/suggest.js": {
       "maxDuration": 120
+    },
+    "api/research.js": {
+      "maxDuration": 120
+    },
+    "api/panel.js": {
+      "maxDuration": 120
     }
   }
 }

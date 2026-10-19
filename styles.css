@@ -597,3 +597,26 @@ select.input { appearance: auto; }
 :root[data-theme="light"] .note-icon, :root[data-theme="light"] .note-go { color: color-mix(in srgb, var(--nc) 65%, #000); }
 @media (prefers-reduced-motion: reduce) { .note, .note.out { animation: none; } }
 @media print { .notes { display: none; } }
+
+/* ---------- company research and company panels ---------- */
+.research-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 12px; align-items: end; }
+.research-form .textarea { min-height: 44px; }
+@media (max-width: 760px) { .research-form { grid-template-columns: 1fr; } }
+.research { display: flex; flex-direction: column; gap: 14px; }
+.research.compact { gap: 8px; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, #FCA5A5 7%, var(--bg)); border: 1px solid color-mix(in srgb, #FCA5A5 25%, transparent); }
+.research-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 24px; }
+.research-grid .list { font-size: 13px; }
+.card.company { border-top: 3px solid var(--ag); background: color-mix(in srgb, var(--ag) 5%, var(--panel)); }
+.sources summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.sources .list { font-size: 12px; margin-top: 6px; }
+.sources a { color: var(--accent); word-break: break-all; }
+.crevs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 10px; }
+.crev { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 10px; background: color-mix(in srgb, var(--ag) 7%, var(--bg)); border: 1px solid color-mix(in srgb, var(--ag) 35%, transparent); border-top: 3px solid var(--ag); }
+.crev-head { display: flex; align-items: center; gap: 8px; }
+.crev-head .input { flex: 1; min-width: 0; font-weight: 600; }
+.crev .input { min-height: 36px; font-size: 13px; }
+.crev > .textarea { min-height: 0; font-size: 13px; line-height: 1.45; resize: vertical; }
+.crev-brief summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.crev-brief .textarea { margin-top: 6px; font-size: 12.5px; line-height: 1.5; min-height: 110px; }
+.crev.add { align-items: center; justify-content: center; min-height: 120px; cursor: pointer; color: var(--muted); --ag: var(--line-3); border-style: dashed; background: transparent; font: inherit; }
+.crev.add:hover { color: var(--text); border-color: var(--accent); }
